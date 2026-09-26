@@ -118,13 +118,17 @@ body::before{
   align-items:center;justify-content:center;pointer-events:none;
 }
 .lap .n{
-  font-size:144px;font-weight:200;line-height:.9;
+  font-size:144px;font-weight:180;line-height:.9;
   font-variant-numeric:tabular-nums;
   text-shadow:0 0 44px rgba(57,224,255,.45);
 }
 .lap .cap{
   font-size:15px;letter-spacing:.28em;text-transform:uppercase;
   color:var(--ink-dim);margin-top:10px;
+}
+.lap .laptime{
+  margin-top:14px;font-size:22px;font-weight:300;color:var(--ink-dim);
+  font-variant-numeric:tabular-nums;letter-spacing:.04em;
 }
 
 /* ---- warm-up / cool-down centre panel ----------------------------------- */
@@ -558,6 +562,7 @@ button.pulse{animation:pulse .9s ease-out 2}
     <div class="lap">
       <div class="n" id="lap">0</div>
       <div class="cap">laps &middot; 400 m</div>
+      <div class="laptime" id="lapTime">0:00</div>
     </div>
   </div>
 
@@ -1028,12 +1033,18 @@ tail.setAttribute('d', TRACK.pathD(0));
 const SCREENS = {welcome:'screenWelcome', warmup:'screenHud', running:'screenHud',
                  paused:'screenHud', cooldown:'screenHud', summary:'screenSummary'};
 let shownMode = null;
+// The current lap's own clock. Reset whenever the lap count changes —
+// including at the start of a new session, when it drops back to 0 — so a
+// walk that starts partway through what would otherwise look like "lap 0"
+// left over from a previous session never inherits its time.
+let sawLaps = -1, lapStartElapsed = 0;
 
 function showScreen(mode){
   if (mode === shownMode) return;
   const target = SCREENS[mode] || 'screenWelcome';
   ['screenWelcome','screenHud','screenSummary']
     .forEach(id => $(id).classList.toggle('on', id === target));
+  
   if (mode === 'welcome' || mode === 'summary') closeFan();
   /* The ribbon lives in the HUD's own band and belongs to the walk. It is
      outside the screens so a line can land on any of them, which meant a line
@@ -1048,7 +1059,7 @@ function showScreen(mode){
   if (mode !== 'welcome') STRIDE_SETTINGS.close();
   // Back to the first question whenever we land on the welcome screen, so a
   // finished walk never leaves a half-made choice sitting there.
-  if (mode === 'welcome') showStep(1);
+  if (mode === 'welcome') { showStep(1); sawLaps = -1; }
   /* Changing screen counts as activity. Without this, finishing a workout drops
      straight onto the summary with half an hour of "idle" already banked — the
      panel dimmed to sleep the instant the first walk ended, before it could be
@@ -1593,6 +1604,12 @@ window.render = function(s){
     const laps = TRACK.laps(dist);
     const frac = TRACK.lapFraction(dist);
     $('lap').textContent = laps;
+
+    if (laps !== sawLaps) {
+      sawLaps = laps;
+      lapStartElapsed = s.elapsed || 0;
+    }
+    $('lapTime').textContent = mmss(Math.max(0, (s.elapsed || 0) - lapStartElapsed));
 
     /* The dash is not simply frac × 1000. `stroke-dasharray` measures the drawn
        path, and the head dot is placed by arc-length along the true stadium;
