@@ -948,7 +948,7 @@ tap($('btnStart'), () => {
     case 'warmup':   Stride.skipWarmup();  break;
     case 'cooldown': Stride.skipCooldown(); break;
     case 'paused':   Stride.resume();      break;
-    case 'running':  Stride.pause();       break;
+    case 'running':  Stride.end();       break;  // was Stride.pause()
   }
   ack($('btnStart'));
 });
@@ -1565,7 +1565,7 @@ window.render = function(s){
   btn.textContent = mode === 'warmup'   ? 'SKIP'
                   : mode === 'cooldown' ? 'SKIP'
                   : mode === 'paused'   ? 'RESUME'
-                  : 'PAUSE';
+                  : 'COOLDOWN'; // was 'PAUSE' 
   btn.classList.toggle('active', mode === 'running');
   $('btnStop').classList.toggle('muted', mode === 'cooldown');
   $('btnSpeedUp').classList.toggle('muted', !moving);
