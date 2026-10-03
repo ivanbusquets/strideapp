@@ -315,7 +315,31 @@
     draw();
     return s;
   }
-
+  /** Somebody's weight, saved through setPersonWeight — see ageStepper for
+   *  the "not set" convention this follows. */
+  function weightStepper(p) {
+    var s = el('div', 'sx-step');
+    var v = el('div', 'sx-v');
+    var value = p.weightKg || 0;
+    var draw = function () {
+      v.innerHTML = value >= 20
+        ? Math.round(value) + '<small>kg</small>' : '<small>not set</small>';
+    };
+    var bump = function (d) {
+      if (value < 20) value = d > 0 ? 70 : 0;
+      else value = value + d;
+      if (value > 200) value = 200;
+      if (value < 20) value = 0;
+      draw();
+      try { S = JSON.parse(bridge().setPersonWeight(p.name, value)); } catch (e) {}
+      p.weightKg = value;
+    };
+    s.appendChild(press(el('button', '', '&minus;'), function () { bump(-1); }));
+    s.appendChild(v);
+    s.appendChild(press(el('button', '', '+'), function () { bump(1); }));
+    draw();
+    return s;
+  }
   /* What a stored password looks like from here. The console does not send
      the password itself — Settings.json() sends `mqtt_pass_set` instead — so
      this is a statement that one exists, never the thing itself. */
@@ -627,6 +651,13 @@
         'those and nothing else — the estimate behind it is rough anyway, so ' +
         'the coach talks in words rather than numbers either way.',
         ageStepper(p)));
+      detail.appendChild(row('Weight',
+        'Only used to estimate calories. The board accepts a weight field but ' +
+        'does not actually use it for its own calorie count, so this is what ' +
+        'makes that number respond to weight at all. Leaving it unset keeps the ' +
+        'board\'s own estimate, which is calculated the same way regardless of ' +
+        'who is walking.',
+        weightStepper(p)));  
       detail.appendChild(row('Record to Home Assistant',
         'Their distance, time and calories, published under their own name.',
         toggle(null, p.publish, function (on) {

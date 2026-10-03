@@ -118,16 +118,12 @@ body::before{
   align-items:center;justify-content:center;pointer-events:none;
 }
 .lap .n{
-  font-size:144px;font-weight:180;line-height:.9;
+  font-size:104px;font-weight:200;line-height:.9;
   font-variant-numeric:tabular-nums;
   text-shadow:0 0 44px rgba(57,224,255,.45);
 }
-.lap .cap{
-  font-size:15px;letter-spacing:.28em;text-transform:uppercase;
-  color:var(--ink-dim);margin-top:10px;
-}
 .lap .laptime{
-  margin-top:14px;font-size:22px;font-weight:300;color:var(--ink-dim);
+  margin-top:14px;font-size:24px;font-weight:400;color:var(--ink-dim);
   font-variant-numeric:tabular-nums;letter-spacing:.04em;
 }
 
@@ -561,8 +557,7 @@ button.pulse{animation:pulse .9s ease-out 2}
     </svg>
     <div class="lap">
       <div class="n" id="lap">0</div>
-      <div class="cap">laps &middot; 400 m</div>
-      <div class="laptime" id="lapTime">0:00</div>
+      <div class="laptime" id="lapTime">Lap Time: 0:00</div>
     </div>
   </div>
 
@@ -1609,7 +1604,7 @@ window.render = function(s){
       sawLaps = laps;
       lapStartElapsed = s.elapsed || 0;
     }
-    $('lapTime').textContent = mmss(Math.max(0, (s.elapsed || 0) - lapStartElapsed));
+    $('lapTime').textContent = 'Lap Time: ' + mmss(Math.max(0, (s.elapsed || 0) - lapStartElapsed));
 
     /* The dash is not simply frac × 1000. `stroke-dasharray` measures the drawn
        path, and the head dot is placed by arc-length along the true stadium;

@@ -53,15 +53,15 @@ TOPIC = "stride/persons"
 AUTOMATION_ID = "stride_publish_persons"
 
 
-BROKER = conf("mqtt_broker").replace("tcp://", "").split(":")[0]
+# BROKER = conf("mqtt_broker").replace("tcp://", "").split(":")[0]
 
 
-def mqtt(topic: str, payload: str):
-    subprocess.run(
-        ["mosquitto_pub", "-r", "-h", BROKER, "-u", MQTT_USER, "-P", MQTT_PASS,
-         "-t", topic, "-m", payload],
-        check=True,
-    )
+# def mqtt(topic: str, payload: str):
+#     subprocess.run(
+#         ["mosquitto_pub", "-r", "-h", BROKER, "-u", MQTT_USER, "-P", MQTT_PASS,
+#          "-t", topic, "-m", payload],
+#         check=True,
+#     )
 
 
 def persons(tok: str) -> list:

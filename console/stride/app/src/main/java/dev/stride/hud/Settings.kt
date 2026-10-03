@@ -117,42 +117,30 @@ class Settings(context: Context) {
      * treadmill without appearing on somebody else's dashboard.
      */
     data class Person(
-        val id: String,
-        val name: String,
-        val coached: Boolean,
-        val publish: Boolean,
-        /** `person.jane_doe`, or empty for somebody who exists only here. */
-        val haPerson: String = "",
-        /**
-         * Years, or 0 for "has not said" — which is the default and stays the
-         * default. It buys one thing: heart-rate zones, via the usual
-         * 220-minus-age. That formula is crude enough (±10-12 bpm between two
-         * people of the same age) that the coach talks in its terms rather than
-         * quoting it, and a walker who leaves this alone still gets effort
-         * coaching measured against their own session average instead. Nobody
-         * has to tell a treadmill their age to be coached by it.
-         *
-         * Per person, not per console: there is a person registry here because
-         * more than one person walks on this machine, and one shared age would
-         * be wrong for all but one of them.
-         */
-        val age: Int = 0,
-    ) {
-        fun json(): JSONObject = JSONObject()
-            .put("id", id).put("name", name)
-            .put("coached", coached).put("publish", publish)
-            .put("ha_person", haPerson)
-            .put("age", age)
+    val id: String,
+    val name: String,
+    val coached: Boolean,
+    val publish: Boolean,
+    val haPerson: String = "",
+    val age: Int = 0,
+    /**
+     * Kilograms, or 0 for "has not said" — same convention as [age]. Used
+     * only to estimate calories in the app, since the board's own calorie
+     * counter does not respond to the WEIGHT field it accepts — confirmed by
+     * writing 40 kg and 100 kg and holding identical pace/incline/duration:
+     * the board reported the same kcal within noise both times.
+     */
+    val weightKg: Double = 0.0,
+) {
+    fun json(): JSONObject = JSONObject()
+        .put("id", id).put("name", name)
+        .put("coached", coached).put("publish", publish)
+        .put("ha_person", haPerson)
+        .put("age", age)
+        .put("weightKg", weightKg)
 
-        /**
-         * Maximum heart rate, or 0 if unknown.
-         *
-         * Clamped to an age this formula means anything for. Below about 13 and
-         * above about 100 it is extrapolation, and a zone floor built on it
-         * would be a number the console had made up.
-         */
-        val maxPulse: Int get() = if (age in 13..100) 220 - age else 0
-    }
+    val maxPulse: Int get() = if (age in 13..100) 220 - age else 0
+}
 
     /**
      * A stable identity, fixed when somebody is added and never derived again.
@@ -225,6 +213,7 @@ class Settings(context: Context) {
                     // Absent for everyone who existed before zones did, which
                     // is the same as declining to say — see Person.age.
                     age = o.optInt("age", 0),
+                    weightKg = o.optDouble("weightKg", 0.0),
                 )
             }
         } catch (e: Exception) {
@@ -243,6 +232,13 @@ class Settings(context: Context) {
         }
     }
 
+    /** Set or clear somebody's weight. Outside a sane range it clears back to
+    *  "has not said" — same convention as age. */
+    fun setPersonWeight(name: String, kg: Double) {
+        val clean = if (kg in 20.0..300.0) kg else 0.0
+        savePeople(people().map { if (it.name == name) it.copy(weightKg = clean) else it })
+    }
+    
     fun person(name: String): Person? = people().firstOrNull { it.name == name }
     fun personById(id: String): Person? = people().firstOrNull { it.id == id }
 

@@ -135,6 +135,8 @@ object FitPro {
         FAN_SPEED(8, 1, 1.0, false, true, "Fan", ""),
         // 4 bytes wide, but only byte 0 is bpm — see decode().
         PULSE(10, 4, 1.0, false, false, "Pulse", "bpm"),
+        // FitPro.Field
+        WEIGHT(25, 2, 0.01, false, true, "Weight", "kg"),   // size/scale UNVERIFIED
         WORKOUT_MODE(12, 1, 1.0, false, true, "Mode", ""),
         // CaloriesConverter: raw * 1024 / 1e8
         CALORIES(13, 4, 1024.0 / 100_000_000.0, false, false, "Calories", "kcal"),

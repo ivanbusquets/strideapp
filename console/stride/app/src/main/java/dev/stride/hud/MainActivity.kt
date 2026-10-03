@@ -286,6 +286,19 @@ class MainActivity : Activity() {
         /** Close enough to level to stop asking. The deck reports whole percent. */
         const val LEVEL_GRADE = 0.5
 
+        /**
+        * Below this the walking ACSM equation applies; at or above it, running.
+        *
+        * Neither formula is validated outside its own speed band, and the two
+        * disagree right at the boundary — this is a chosen cutoff, not a
+        * measured one. 7.5 km/h sits between the walking equation's usual upper
+        * bound (~6 km/h) and the running equation's usual lower bound
+        * (~8 km/h), which is the least-wrong place to draw the line for a
+        * console that has no concept of "walk" vs "run" anywhere else
+        * (see WORKOUT in this file).
+        */
+        const val RUN_THRESHOLD_KPH = 7.5
+
         /* ---- the speed readout ------------------------------------------
          *
          * See [beltSpeed]. The board will not tell us the belt speed, so it is
@@ -504,6 +517,34 @@ class MainActivity : Activity() {
         else -> 5
     }
 
+    /**
+    * Estimated energy cost, kcal/min, from the ACSM metabolic equations.
+    *
+    * VO2 in mL/kg/min:
+    *   walking: 0.1·S + 1.8·S·G + 3.5
+    *   running: 0.2·S + 0.9·S·G + 3.5
+    * where S is speed in m/min and G is grade as a fraction (5% incline = 0.05).
+    * kcal/min = VO2 · weightKg / 1000 · 5 (1 L O2 ≈ 5 kcal).
+    *
+    * This is the standard published equation, not a measurement of this
+    * walker — treat it the way the coach treats an estimated heart-rate zone:
+    * directionally useful, not a medical figure. It is also the only input
+    * calories have that the board's own counter never did, which is the whole
+    * reason this exists — see RUN_THRESHOLD_KPH's note on the board ignoring
+    * the WEIGHT field entirely.
+    */
+    private fun kcalPerMin(speedKph: Double, inclinePct: Double, weightKg: Double): Double {
+        if (speedKph <= 0.0 || weightKg <= 0.0) return 0.0
+        val speedMpm = speedKph * 1000.0 / 60.0
+        val grade = inclinePct / 100.0
+        val vo2 = if (speedKph < RUN_THRESHOLD_KPH) {
+            0.1 * speedMpm + 1.8 * speedMpm * grade + 3.5
+        } else {
+            0.2 * speedMpm + 0.9 * speedMpm * grade + 3.5
+        }
+        return vo2.coerceAtLeast(0.0) * weightKg / 1000.0 * 5.0
+    }
+
     /** Pace at the moment of pausing, and the speed the resume ramp is climbing
      *  towards. Zero for either means no ramp is in progress. */
     @Volatile private var pausedKph = 0.0
@@ -534,9 +575,17 @@ class MainActivity : Activity() {
      */
     @Volatile private var walkerHrMax = 0
 
+    /**
+    * The current walker's weight in kg, or 0 if not given. Cached like
+    * [walkerHrMax] — refreshed wherever [walker] changes, not read per frame.
+    */
+    @Volatile private var walkerWeightKg = 0.0
+
     private fun refreshWalkerHrMax() {
         walkerHrMax = cfg.person(walker)?.maxPulse ?: 0
+        walkerWeightKg = cfg.person(walker)?.weightKg ?: 0.0  // added
     }
+
 
     // --- guided walk ---------------------------------------------------------
     /** Empty on a casual walk. Set once at START and never rewritten mid-walk. */
@@ -759,6 +808,12 @@ class MainActivity : Activity() {
      */
     @Volatile private var climbM = 0.0
     @Volatile private var lastClimbMetres = 0.0
+
+    /** Own calorie estimate, accumulated per poll from [kcalPerMin] — see that
+    *  function's note on why the board's own counter is not used when a
+    *  weight is known. Reset with everything else in resetSession(). */
+    @Volatile private var ownCalories = 0.0
+    private var lastCalorieAt = 0L
 
     /** Set once when the belt stops, so the summary screen can show it. */
     @Volatile private var earned: List<String> = emptyList()
@@ -1329,6 +1384,18 @@ class MainActivity : Activity() {
             return cfg.json().toString()
         }
 
+        /** Set or clear somebody's weight — see Settings.Person.weightKg. */
+        @JavascriptInterface fun setPersonWeight(name: String, kg: Double): String {
+            cfg.setPersonWeight(name, kg)
+            refreshWalkerWeightIfCurrent(name)
+            Log.i(TAG, "settings: weight for $name -> ${if (kg in 20.0..300.0) "$kg kg" else "not given"}")
+            return cfg.json().toString()
+        }
+
+        private fun refreshWalkerWeightIfCurrent(name: String) {
+            if (name == walker) refreshWalkerHrMax()
+        }
+
         // --- heart rate strap ---
         @JavascriptInterface fun hrScan() {
             // Asking is asynchronous: the dialog is still on screen when this
@@ -1366,6 +1433,16 @@ class MainActivity : Activity() {
             .put("battery", strap.battery)
             .put("name", cfg.hrName())
             .put("address", cfg.hrAddr())
+            .toString()
+
+        /** Live kcal for the current session, for the weight-probe script. 0 outside
+        *  a session or before the first good frame. */
+        @JavascriptInterface fun liveCalories(): Double = lastSnap?.calories ?: 0.0
+
+        @JavascriptInterface fun liveStats(): String = org.json.JSONObject()
+            .put("calories", lastSnap?.calories ?: 0.0)
+            .put("distance", lastSnap?.distance ?: 0.0)
+            .put("elapsed", lastSnap?.elapsed ?: 0.0)
             .toString()
 
         /**
@@ -1430,6 +1507,13 @@ class MainActivity : Activity() {
 
         /** The second, deliberate half of the tap. See [wakeBoard]. */
         @JavascriptInterface fun wakeBoard() = this@MainActivity.wakeBoard()
+
+        @JavascriptInterface fun debugWeight(kg: Double) {
+            if (Session.isMoving(session)) return          // belt idle only
+            pendingWrite = mapOf(FitPro.Field.WEIGHT to kg)
+            Log.i(TAG, "weight: writing $kg")
+            thread { Thread.sleep(600); readWeight() }     // read-back
+        }
     }
 
     /**
@@ -2152,6 +2236,8 @@ class MainActivity : Activity() {
         armBaseline = true
         sessionDistance = 0.0
         sessionCalories = 0.0
+        ownCalories = 0.0
+        lastCalorieAt = 0L
         maxSpeed = 0.0
         maxIncline = 0.0
         speedSum = 0.0
@@ -2794,7 +2880,28 @@ class MainActivity : Activity() {
 
         if (Session.isMoving(session)) {
             sessionDistance = (rawDistance - baseDistance).coerceAtLeast(0.0)
-            sessionCalories = (rawCalories - baseCalories).coerceAtLeast(0.0)
+            //sessionCalories = (rawCalories - baseCalories).coerceAtLeast(0.0)
+            if (walkerWeightKg > 0.0) {
+                // The board's own counter ignores weight entirely — confirmed on
+                // hardware: 40 kg and 100 kg at identical pace/incline/duration
+                // produced the same kcal within noise. So when a weight is known,
+                // integrate our own estimate instead of reading the board's.
+                val nowUp = SystemClock.elapsedRealtime()
+                if (lastCalorieAt != 0L) {
+                    val dtMin = (nowUp - lastCalorieAt) / 60_000.0
+                    // A gap too long to trust (same reasoning as MAX_STEP_MS
+                    // elsewhere) is not integrated — better to lose a few seconds
+                    // of estimate than invent effort for a pause that already
+                    // happened under PAUSED, which this branch never sees anyway.
+                    if (dtMin in 0.0..(MAX_STEP_MS / 60_000.0)) {
+                        ownCalories += kcalPerMin(speed, incline, walkerWeightKg) * dtMin
+                    }
+                }
+                lastCalorieAt = nowUp
+                sessionCalories = ownCalories
+            } else {
+                sessionCalories = (rawCalories - baseCalories).coerceAtLeast(0.0)
+            }
             if (speed > maxSpeed) maxSpeed = speed
             if (incline > maxIncline) maxIncline = incline
             speedSum += speed
@@ -3414,6 +3521,17 @@ class MainActivity : Activity() {
         // A board that has been away has usually re-locked while it was gone.
         unlockWithRetries()
         return true
+    }
+
+    private val WEIGHT_READ = listOf(FitPro.Field.WEIGHT)
+
+    private fun readWeight() {
+        val reply = conn.exchange(FitPro.readWrite(deviceId, WEIGHT_READ)) ?: run {
+            Log.i(TAG, "weight: no answer"); return
+        }
+        val why = FitPro.rejectReason(reply, WEIGHT_READ)
+        Log.i(TAG, "weight: ${FitPro.hex(reply)}  reject=$why  " +
+                "value=${FitPro.parse(reply, WEIGHT_READ)[FitPro.Field.WEIGHT]}")
     }
 
     /**
