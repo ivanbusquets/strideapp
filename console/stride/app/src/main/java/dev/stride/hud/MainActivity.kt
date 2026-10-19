@@ -442,6 +442,11 @@ class MainActivity : Activity() {
     private val voice by lazy { CoachVoice(this) }
     private val coach = Coach()
 
+    /** The treadmill as a standard Bluetooth running speed and cadence sensor,
+    *  for watch apps like WorkoutDoors that support footpod-shaped sensors but
+    *  not FTMS. See Rsc.kt. */
+    private val rsc by lazy { Rsc(this) }
+
     @Volatile private var running = false
     @Volatile private var deviceId: Byte = FitPro.Dev.TREADMILL
     @Volatile private var targetKph = 0.0
@@ -2807,6 +2812,7 @@ class MainActivity : Activity() {
             lastSnap = snap
             watchSlip(snap)
             ftms.update(snap)
+            rsc.update(snap)
             // Through repaint() rather than push(), so the session stamped on
             // the frame is the one that is true at the moment it is handed to
             // the page. A press lands on a WebView thread and can arrive
@@ -3675,11 +3681,13 @@ class MainActivity : Activity() {
         Log.i(TAG, "limits: $minKph..$maxKph km/h, $minGrade..$maxGrade %")
         strap.logRadioCapabilities()
         ftms.start()
+        rsc.start()
     }
 
     override fun onDestroy() {
         running = false
         ftms.stop()
+        rsc.stop()
         voice.close()
         mqtt.close()
         conn.close()
