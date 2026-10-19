@@ -56,6 +56,20 @@
    two 248 px straights and r = 158 semicircles and that is the default, but a
    UI that draws the oval smaller passes its own numbers and gets arc-length
    along the stadium it actually drew.
+
+   DIRECTION, AND WHERE A LAP BEGINS. A lap normally runs clockwise from the
+   left end of the top straight — that is where an SVG path written
+   `M left,top H right A…` starts drawing, and holding distance zero on the
+   drawn path's first point is what lets a dash sit underneath the dot. A UI
+   that wants the other way round asks for `counterClockwise`, which puts
+   distance zero at the 7 o'clock mark of the oval (lower-left, thirty degrees
+   clockwise from the bottom of the clock face) and sends the dot round
+   anticlockwise from there: down the tail of the left bend to the bottom-left
+   corner, right along the bottom straight, up the right bend through 3
+   o'clock, left along the top straight, and back down through 9 o'clock to
+   the start. The drawn rail turns with the dot, for the same reason it does
+   the other way — they are one measurement of one line, and a dash measured
+   along a path that started somewhere else would not end under the dot.
    =========================================================================== */
 
 /**
@@ -65,6 +79,9 @@
  * @param opts.squash    vertical scale; 1 is face-on, ~0.5 is a shallow oblique
  * @param opts.lapMetres real-world lap, m (default 400)
  * @param opts.samples   resolution of the true→screen length table
+ * @param opts.counterClockwise  run the lap the other way, from the 7 o'clock
+ *                       mark, dot and rail both (default false: the
+ *                       clockwise-from-top-left behaviour every caller had)
  */
 function track(opts) {
   opts = opts || {};
@@ -75,6 +92,7 @@ function track(opts) {
   var squash    = opts.squash    == null ? 1   : opts.squash;
   var lapMetres = opts.lapMetres || 400;
   var samples   = opts.samples   || 720;
+  var ccw       = !!opts.counterClockwise;
 
   var half      = straight / 2;
   var bend      = Math.PI * radius;          // one semicircle
@@ -84,7 +102,7 @@ function track(opts) {
      it lines up with where an SVG path written `M left,top H right A…` starts
      drawing. Keeping those two in step is what lets a dash and a dot describe
      the same position. */
-  function trueAt(d) {
+  function trueAtCw(d) {
     d = d % perimeter;
     if (d < 0) d += perimeter;
     var th;
@@ -104,13 +122,57 @@ function track(opts) {
              tx: -Math.cos(th), ty: -Math.sin(th) };
   }
 
+  /* The same lap the other way round, distance zero at the 7 o'clock mark.
+     That mark sits on the left bend at screen angle 120° — thirty degrees
+     past the bottom-left corner, which is the bottom of the clock face plus
+     thirty degrees clockwise — so it is the corner at φ = π/2 + π/6. From
+     there the dot runs anticlockwise: φ falls from 120° to 90° (the tail of
+     the left bend), along the bottom straight, round the right bend from 90°
+     down through 0° to -90°, along the top, and down the left bend from 270°
+     through 180° back to 120°. Angles are screen-space, so y is down. */
+  var SEVEN = Math.PI / 2 + Math.PI / 6;                    // 120°
+
+  function trueAtCcw(d) {
+    d = d % perimeter;
+    if (d < 0) d += perimeter;
+    var tail = radius * Math.PI / 6;                        // 7 o'clock → corner
+    var th;
+    if (d <= tail) {                                        // left bend tail, ↘
+      th = SEVEN - d / radius;
+      return { x: -half + radius * Math.cos(th), y: radius * Math.sin(th),
+               tx: Math.sin(th), ty: -Math.cos(th) };
+    }
+    if (d <= tail + straight) {                             // bottom straight, →
+      return { x: -half + (d - tail), y: radius, tx: 1, ty: 0 };
+    }
+    if (d <= tail + straight + bend) {                      // right bend, ↑
+      th = Math.PI / 2 - (d - tail - straight) / radius;
+      return { x: half + radius * Math.cos(th), y: radius * Math.sin(th),
+               tx: Math.sin(th), ty: -Math.cos(th) };
+    }
+    if (d <= tail + 2 * straight + bend) {                  // top straight, ←
+      return { x: half - (d - tail - straight - bend), y: -radius,
+               tx: -1, ty: 0 };
+    }
+    th = 3 * Math.PI / 2 - (d - tail - 2 * straight - bend) / radius;
+    return { x: -half + radius * Math.cos(th), y: radius * Math.sin(th),
+             tx: Math.sin(th), ty: -Math.cos(th) };
+  }
+
+  var trueAt = ccw ? trueAtCcw : trueAtCw;
+
   /* True space → screen. The squash lands here and nowhere else. */
   function toScreen(p) {
     var tx = p.tx, ty = p.ty * squash;
     var tl = Math.sqrt(tx * tx + ty * ty) || 1;
-    /* Outward normal is the tangent turned a quarter clockwise: on the top
-       straight that is (0,-1), which points off the track, as it should. */
-    var nx = ty / tl, ny = -tx / tl;
+    /* Outward normal is the tangent turned a quarter *clockwise* — on the top
+       straight that is (0,-1), which points off the track, as it should. Run
+       the lap anticlockwise and the tangent reverses, so that same quarter
+       turn would now point inwards; the sign flips to keep the normal on the
+       outside, where the start/finish tick is drawn along it. */
+    var nx, ny;
+    if (ccw) { nx = -ty / tl; ny = tx / tl; }
+    else     { nx =  ty / tl; ny = -tx / tl; }
     return {
       x: cx + p.x,
       y: cy + p.y * squash,
@@ -164,6 +226,20 @@ function track(opts) {
       var l = r2(cx - half), rt = r2(cx + half);
       var t = r2(cy - ry), b = r2(cy + ry);
       r = r2(r); ry = r2(ry);
+      if (ccw) {
+        /* Starts on the left bend at the 7 o'clock mark and runs anticlockwise
+           — the same order the dot travels, which is the whole point. The
+           sweep flag is 0 where the clockwise path used 1; every bend is
+           traversed the other way round. */
+        var x7 = r2(cx - half - r / 2);                 // cos 120° = -1/2
+        var y7 = r2(cy + ry * Math.sqrt(3) / 2);        // sin 120° =  √3/2
+        return 'M ' + x7 + ' ' + y7 +
+               ' A ' + r + ' ' + ry + ' 0 0 0 ' + l + ' ' + b +
+               ' H ' + rt +
+               ' A ' + r + ' ' + ry + ' 0 0 0 ' + rt + ' ' + t +
+               ' H ' + l +
+               ' A ' + r + ' ' + ry + ' 0 0 0 ' + x7 + ' ' + y7 + ' Z';
+      }
       return 'M ' + l + ' ' + t + ' H ' + rt +
              ' A ' + r + ' ' + ry + ' 0 0 1 ' + rt + ' ' + b +
              ' H ' + l +

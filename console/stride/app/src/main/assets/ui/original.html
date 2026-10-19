@@ -1200,9 +1200,14 @@ function ticks(el, n, active){
    centred in the 732x404 hero. Face-on here — the oblique squash exists for
    the UIs that are short of vertical space, and this one is not.
 
+   The lap runs anticlockwise and begins at the 7 o'clock mark of the oval,
+   rather than the clockwise-from-top-left the other four still use — see
+   `counterClockwise` in stride-core.js.
+
    Everything the ring needs comes out of this one object, so the rail the dot
    runs on and the rail that is drawn cannot drift apart. */
-const TRACK = STRIDE.track({straight:248, radius:158, cx:366, cy:202, squash:1});
+const TRACK = STRIDE.track({straight:248, radius:158, cx:366, cy:202, squash:1,
+                            counterClockwise:true});
 
 const progress = $('progress'), tail = $('tail'), dot = $('dot');
 progress.setAttribute('d', TRACK.pathD(0));
