@@ -95,6 +95,14 @@ body::before{
   font-variant-numeric:tabular-nums;
 }
 .side .unit{font-size:18px;color:var(--ink-dim);margin-top:4px}
+/* Current pace, read off the same setpoint the speed above it shows. Compact
+   by necessity: the 104 px value and the tick column already fill the hero
+   band, which ends at 466. */
+.side .pace{
+  margin-top:6px;font-size:20px;font-weight:200;color:var(--ink-dim);
+  font-variant-numeric:tabular-nums;
+}
+.side .pace .paceu{font-size:15px;margin-left:3px}
 .side .target{
   margin-top:14px;font-size:15px;color:var(--ink-faint);
   font-variant-numeric:tabular-nums;
@@ -107,6 +115,9 @@ body::before{
 .ticks i{display:block;width:44px;height:3px;margin-top:5px;background:var(--track-line);border-radius:2px;transition:background .25s}
 .ticks i.on{background:var(--accent)}
 .side.right .ticks i.on{background:var(--accent-warm)}
+/* Trimmed only on the right, to give the pace line its 30 px back: the column
+   is 10 marks and 80 px of them, so 96 still shows every one. */
+.side.right .ticks{height:96px}
 
 /* ---- centre: track ------------------------------------------------------
    The rail, the lanes and the head dot are all generated from STRIDE.track
@@ -583,6 +594,7 @@ button.pulse{animation:pulse .9s ease-out 2}
     <div class="label">Speed</div>
     <div class="value" id="speed">0.0</div>
     <div class="unit">km/h</div>
+    <div class="pace"><span id="pace">--'--"</span><span class="paceu" id="paceUnit">/km</span></div>
     <div class="target">target <b id="speedTarget">0.0</b></div>
     <div class="ticks" id="speedTicks"></div>
   </div>
@@ -1708,6 +1720,40 @@ window.coach = function(c){
 };
 
 /* --- render -------------------------------------------------------------- */
+
+/* Kilometres in a mile. Local to the pace readout — nothing else here works in
+   miles, and the console stores distances and speeds in km either way. */
+const MI_KM = 1.609344;
+
+/* Which units the pace is written in. The rest of the console reads this from
+   the Setting bundle the same way — see stride-core people()/defaultWalker() —
+   and with the same guard: `settingsJson` is not in the standalone stub, so a
+   desktop browser with no console behind it falls back to km rather than
+   throwing. `?units=mi` previews the other setting offline, in the spirit of
+   the existing `?screen=` / `?asleep=` query flags. */
+function paceUnits(){
+  const m = /(^|[?&])units=([^&]+)/.exec(window.location.search);
+  if (m) return decodeURIComponent(m[2]) === 'mi' ? 'mi' : 'km';
+  try { return JSON.parse(Stride.settingsJson()).units === 'mi' ? 'mi' : 'km'; }
+  catch (e) { return 'km'; }
+}
+
+/* Pace for a commanded speed, as minutes-plus-seconds per km or per mile.
+   Below 0.6 km/h a pace is not a reading, it is noise — that is a 100 min/km
+   crawl, and every treadmill minimum speed sits above it — so the element
+   shows `--'--"` rather than a 3-digit minute count or Infinity. Zero speed
+   lands here too, which is the belt stopped. */
+function paceText(speedKph, units){
+  const suffix = units === 'mi' ? '/mi' : '/km';
+  const kph = speedKph != null ? speedKph : 0;
+  if (!(kph >= 0.6)) return { value: "--'--\"", unit: suffix };
+  const mins = (units === 'mi' ? 60 * MI_KM : 60) / kph;
+  const total = Math.round(mins * 60);        // whole seconds, so 59.6s carries
+  const mm = Math.floor(total / 60);
+  const ss = total % 60;
+  return { value: mm + "'" + (ss < 10 ? '0' : '') + ss + '"', unit: suffix };
+}
+
 window.render = function(s){
   const mode = (s.mode || 'welcome').toLowerCase();
   showScreen(mode);
@@ -1717,6 +1763,9 @@ window.render = function(s){
   if (mode === 'welcome') return;
 
   $('speed').textContent   = ((s.speed != null ? s.speed : 0)).toFixed(1);
+  const pace = paceText(s.speed, paceUnits());
+  $('pace').textContent     = pace.value;
+  $('paceUnit').textContent = pace.unit;
   $('incline').textContent = ((s.incline != null ? s.incline : 0)).toFixed(1);
   $('speedTarget').textContent   = ((s.targetSpeed != null ? s.targetSpeed : 0)).toFixed(1);
   $('inclineTarget').textContent = ((s.targetIncline != null ? s.targetIncline : 0)).toFixed(1);
