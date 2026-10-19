@@ -67,6 +67,7 @@ class Settings(context: Context) {
         const val WARMUP_KPH = "warmup_kph"
         const val INCLINE_RATE = "incline_rate"   // "gentle" | "normal" | "quick"
         const val OPEN_LAP_MIN = "open_lap_min"
+        const val RESET_AFTER_WARMUP = "reset_after_warmup"
 
         // --- coach ---
         const val COACH_ON = "coach_on"
@@ -238,7 +239,7 @@ class Settings(context: Context) {
         val clean = if (kg in 20.0..300.0) kg else 0.0
         savePeople(people().map { if (it.name == name) it.copy(weightKg = clean) else it })
     }
-    
+
     fun person(name: String): Person? = people().firstOrNull { it.name == name }
     fun personById(id: String): Person? = people().firstOrNull { it.id == id }
 
@@ -331,6 +332,13 @@ class Settings(context: Context) {
 
     // --- deck -----------------------------------------------------------------
 
+    /** Whether finishing (or skipping) the warm-up zeroes distance, time and
+    *  calories, so the session totals are the workout rather than the
+    *  easing-in. On by default — the old behaviour folded warm-up distance
+    *  into "the walk", which is why a chosen 30-minute session finished a
+    *  couple of minutes past 30. */
+    fun resetAfterWarmup(): Boolean = prefs.getBoolean(RESET_AFTER_WARMUP, true)
+
     fun warmupMs(): Long = prefs.getInt(WARMUP_MIN, 2) * 60_000L
     fun cooldownMs(): Long = prefs.getInt(COOLDOWN_MIN, 2) * 60_000L
     fun warmupKph(): Double = prefs.getFloat(WARMUP_KPH, 2.0f).toDouble()
@@ -411,6 +419,7 @@ class Settings(context: Context) {
         .put("mqtt_pass_set", mqttPass().isNotEmpty())
         .put(MQTT_TLS, mqttTls())
         .put(MQTT_PREFIX, mqttPrefix())
+        .put(RESET_AFTER_WARMUP, resetAfterWarmup())
         .put(WARMUP_MIN, prefs.getInt(WARMUP_MIN, 2))
         .put(COOLDOWN_MIN, prefs.getInt(COOLDOWN_MIN, 2))
         .put(WARMUP_KPH, prefs.getFloat(WARMUP_KPH, 2.0f).toDouble())
@@ -439,7 +448,7 @@ class Settings(context: Context) {
         val e = prefs.edit()
         when (key) {
             ALLOW_GUEST, HA_ENABLED, MQTT_TLS, COACH_ON, COACH_REMOTE,
-            COACH_MILESTONES, CLOCK_24, KEEP_AWAKE ->
+            COACH_MILESTONES, CLOCK_24, KEEP_AWAKE, RESET_AFTER_WARMUP ->
                 e.putBoolean(key, value == "true" || value == "1")
 
             MQTT_PORT, WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN ->

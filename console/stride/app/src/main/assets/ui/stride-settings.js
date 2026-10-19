@@ -880,6 +880,11 @@
       stepper('cooldown_min', S.cooldown_min || 0, 0, 10, 1, 'min')));
     g2.appendChild(row('Warm-up speed', 'Also the speed a cool-down eases back to.',
       stepper('warmup_kph', S.warmup_kph || 2, 1, 6, 0.5, 'km/h', 1)));
+    g2.appendChild(row('Reset after warm-up',
+      'Zero the distance, time and calories once the warm-up ends, so the ' +
+      'session totals are the workout rather than the easing-in. Off counts ' +
+      'the warm-up as part of the walk.',
+      toggle('reset_after_warmup', S.reset_after_warmup !== false)));
     sc.appendChild(g2);
 
     var g3 = group('Guided walks');

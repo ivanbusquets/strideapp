@@ -70,6 +70,7 @@ body::before{
   padding:0 32px;color:var(--ink-dim);font-size:16px;letter-spacing:.04em;
 }
 .topbar .state{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   color:var(--accent);font-weight:600;text-transform:uppercase;
   letter-spacing:.18em;font-size:15px;
   border:2px solid currentColor;border-radius:16px;padding:5px 20px;
@@ -244,7 +245,7 @@ button.pulse{animation:pulse .9s ease-out 2}
 .welcome .ask{margin-top:16px;font-size:24px;color:var(--ink-dim);font-weight:300}
 .picks{margin-top:66px;display:flex;justify-content:center}
 .pick{
-  flex:none;width:288px;height:224px;margin:0 20px;
+  flex:none;width:288px;height:224px;margin:0 10px;
   background:rgba(22,37,90,.5);border:2px solid var(--track-line);
   border-radius:38px;color:var(--ink);font-family:inherit;
   display:flex;flex-direction:column;align-items:center;justify-content:center;

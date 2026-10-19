@@ -2219,6 +2219,7 @@ class MainActivity : Activity() {
             Session.WARMUP -> {
                 session = Session.ACTIVE
                 phaseEndsAt = 0L
+                foldWarmupIntoTotals()
                 Log.i(TAG, "warm-up complete")
             }
             Session.COOLDOWN -> requestFinish()
@@ -2253,6 +2254,32 @@ class MainActivity : Activity() {
         earned = emptyList()
         sessionStartedAt = System.currentTimeMillis()
         sessionStartedUptime = SystemClock.elapsedRealtime()
+    }
+
+    /**
+    * Warm-up fold-in, gated by Settings.resetAfterWarmup.
+    *
+    * resetSession() re-arms the board baseline and zeroes every rolling stat —
+    * distance, calories, climb, max speed/incline, pulse stats, zoneSecs, and
+    * [ownCalories] — exactly as it does at the start of a fresh walk, which is
+    * what folding the warm-up away actually means: the session proper begins
+    * here, not at the tap on the welcome screen.
+    *
+    * A guided walk's plan time (elapsedSec()) resets along with everything
+    * else, so the plan's own segment tracking in planTick() starts over from
+    * segment zero too — the first segment is normally long enough that the
+    * warm-up hasn't moved past it, but if a template opens with a very short
+    * first segment, [baselineKph] could already have been captured from warm-up
+    * pace. Not handled specially; worth knowing if a very short first segment
+    * ever reads an odd baseline.
+    */
+    private fun foldWarmupIntoTotals() {
+        if (!cfg.resetAfterWarmup()) {
+            Log.i(TAG, "warm-up complete")
+            return
+        }
+        resetSession()
+        Log.i(TAG, "warm-up complete — totals reset")
     }
 
     /**
