@@ -424,6 +424,57 @@ button.pulse{animation:pulse .9s ease-out 2}
 .suggest b{color:var(--accent-warm);font-weight:600}
 .suggest.hand b{color:var(--ink-faint)}
 
+.hrsetup{margin-top:40px;display:flex;flex-direction:column;align-items:center}
+.hrrow{display:flex;align-items:center;margin:14px 0;width:520px;justify-content:space-between}
+.hrlabel{font-size:15px;letter-spacing:.18em;color:var(--ink-dim);text-transform:uppercase}
+.hrstep{display:flex;align-items:center}
+.hrbtn{
+  flex:none;width:56px;height:56px;margin:0 6px;max-width:none;
+  border-radius:16px;font-size:24px;
+}
+.hrval{min-width:140px;text-align:center;font-size:26px;font-weight:300;font-variant-numeric:tabular-nums}
+.hrval small{font-size:15px;color:var(--ink-dim);margin-left:4px}
+
+.hrbadge{
+  position:absolute;left:274px;top:160px;width:732px;text-align:center;
+  display:none;flex-direction:column;align-items:center;
+}
+.hrbadge.show{display:flex}
+.hrb-target{font-size:15px;letter-spacing:.2em;color:var(--ink-dim)}
+.hrb-current{margin-top:10px;font-size:64px;font-weight:200;font-variant-numeric:tabular-nums}
+.hrb-suggest{
+  margin-top:18px;display:inline-block;
+  padding:26px 52px;border-radius:42px;
+  background:rgba(255,157,60,.16);border:2px solid var(--accent-warm);
+  font-size:36px;color:var(--ink);
+  transition:background .15s,transform .08s;
+}
+.hrb-suggest:active,.hrb-suggest.down{transform:scale(.96);background:rgba(255,157,60,.3)}
+.hrb-suggest b{color:var(--accent-warm);font-weight:600}
+.hrb-suggest.quiet{
+  background:none;border-color:var(--track-line);color:var(--ink-dim);
+}
+.hrmini{
+  position:absolute;left:274px;top:420px;width:732px;
+  display:none;align-items:center;justify-content:center;gap:28px;
+  font-size:20px;color:var(--ink-dim);letter-spacing:.08em;
+}
+.hrmini.show{display:flex}
+.hrmini b{color:var(--ink);font-weight:500;margin-left:6px}
+.hrmini .edit{
+  margin-left:10px;width:34px;height:34px;border-radius:10px;max-width:none;
+  font-size:16px;padding:0;
+}
+
+.hredit{
+  position:absolute;top:0;right:0;bottom:0;left:0;background:rgba(5,11,31,.98);
+  display:none;align-items:center;justify-content:center;flex-direction:column;
+  z-index:55;
+}
+.hredit.show{display:flex}
+.hredit h1{font-size:34px;font-weight:200}
+
+
 /* ---- sleep -------------------------------------------------------------- */
 #sleep{background:#000;z-index:80}
 #sleep .t{font-size:112px;font-weight:100;color:#1d2a4d;font-variant-numeric:tabular-nums}
@@ -460,15 +511,47 @@ button.pulse{animation:pulse .9s ease-out 2}
           <span class="name">My routes</span><span class="hint">a walk you have already done</span></button>
         <button class="pick" id="pickGuided"><span class="glyph">⛰️</span>
           <span class="name">Guided</span><span class="hint">the hill is handled for you</span></button>
+        <button class="pick" id="pickHrTarget"><span class="glyph">❤️</span>
+          <span class="name">HR Target</span><span class="hint">hold a heart rate, speed follows</span></button>
       </div>
     </div>
 
-    <!-- step 4 — which shape, how long -->
+    <!-- step 3 — which shape, how long -->
     <div class="step" id="step3">
       <div class="ask" id="askHow" style="margin-top:0">How long?</div>
       <div class="chips" id="durations"></div>
       <div class="ask" id="askShape" style="margin-top:34px">Pick a shape</div>
       <div class="plans" id="plans"></div>
+    </div>
+
+    <div class="step" id="step4">
+      <div class="ask" style="margin-top:0">Pick your range and target</div>
+      <div class="hrsetup">
+        <div class="hrrow">
+          <div class="hrlabel">MIN SPEED</div>
+          <div class="hrstep">
+            <button class="hrbtn" data-hr="min" data-d="-1">−</button>
+            <div class="hrval" id="hrMinVal">3.0<small> km/h</small></div>
+            <button class="hrbtn" data-hr="min" data-d="1">+</button>
+          </div>
+        </div>
+        <div class="hrrow">
+          <div class="hrlabel">MAX SPEED</div>
+          <div class="hrstep">
+            <button class="hrbtn" data-hr="max" data-d="-1">−</button>
+            <div class="hrval" id="hrMaxVal">7.0<small> km/h</small></div>
+            <button class="hrbtn" data-hr="max" data-d="1">+</button>
+          </div>
+        </div>
+        <div class="hrrow">
+          <div class="hrlabel">TARGET HEART RATE</div>
+          <div class="hrstep">
+            <button class="hrbtn" data-hr="bpm" data-d="-1">−</button>
+            <div class="hrval" id="hrBpmVal">130<small> bpm</small></div>
+            <button class="hrbtn" data-hr="bpm" data-d="1">+</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="foot" id="wFoot">Clip the safety key on first — the belt eases up to 2 km/h as soon as you choose.</div>
@@ -523,6 +606,51 @@ button.pulse{animation:pulse .9s ease-out 2}
     </div>
     <div class="suggest" id="suggest"></div>
   </div>
+
+  <div class="hrbadge" id="hrBadge">
+    <div class="hrb-target">TARGET <span id="hrbTarget">130</span> BPM</div>
+    <div class="hrb-current" id="hrbCurrent">— bpm</div>
+    <div class="hrb-suggest" id="hrbSuggest"></div>
+  </div>
+
+  <div class="hrmini" id="hrMini">
+    <span>MIN <b id="hrmMin">—</b> km/h</span>
+    <span>MAX <b id="hrmMax">—</b> km/h</span>
+    <span>TARGET <b id="hrmBpm">—</b> bpm</span>
+    <button class="pick edit" id="btnHrEdit">✎</button>
+  </div>
+
+  <div class="hredit" id="hredit">
+    <h1>Adjust target</h1>
+    <div class="hrsetup">
+      <div class="hrrow">
+        <div class="hrlabel">MIN SPEED</div>
+        <div class="hrstep">
+          <button class="hrbtn" data-hre="min" data-d="-1">−</button>
+          <div class="hrval" id="hreMinVal">3.0<small> km/h</small></div>
+          <button class="hrbtn" data-hre="min" data-d="1">+</button>
+        </div>
+      </div>
+      <div class="hrrow">
+        <div class="hrlabel">MAX SPEED</div>
+        <div class="hrstep">
+          <button class="hrbtn" data-hre="max" data-d="-1">−</button>
+          <div class="hrval" id="hreMaxVal">7.0<small> km/h</small></div>
+          <button class="hrbtn" data-hre="max" data-d="1">+</button>
+        </div>
+      </div>
+      <div class="hrrow">
+        <div class="hrlabel">TARGET HEART RATE</div>
+        <div class="hrstep">
+          <button class="hrbtn" data-hre="bpm" data-d="-1">−</button>
+          <div class="hrval" id="hreBpmVal">130<small> bpm</small></div>
+          <button class="hrbtn" data-hre="bpm" data-d="1">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="row"><button class="primary" id="btnHrEditDone">DONE</button></div>
+  </div>
+
 
   <!-- The rail, the four lanes and the start/finish tick all have their `d`
        filled in from STRIDE.track at load: one stadium, one set of numbers,
@@ -765,6 +893,11 @@ const SHAPES = {
   climb:[0,3,5.5,4.5,7.5,11,6,2.5,0],
 };
 let chosenMinutes = 30;
+
+let controlMode = 'guided';
+let hrMin = 3.0, hrMax = 7.0, hrBpm = 130;
+let hrSuggestKph = 0;
+
 let chosenShape = 'rolling';
 /* A route's id when one is picked, or null for a shape. They are alternatives
    for the same slot, so choosing either clears the other. */
@@ -790,18 +923,15 @@ function myRoutes(){
    The profile step is one card today. It exists so that adding a second person
    later is a change to this list rather than a change to the flow — though the
    rest of the system is still single-user, so that is all it would be. */
-const STEPS = ['step1','step2','step3'];
+const STEPS = ['step1','step2','step3', 'step4'];
 let stepNow = 1;
 
 function showStep(n){
   stepNow = n;
   STEPS.forEach((id,i) => $(id).classList.toggle('on', i === n-1));
   $('btnBack').style.display = n > 1 ? 'block' : 'none';
-  // BEGIN belongs to the guided picker and nowhere else.
-  $('btnBegin').style.display = n === 3 ? 'block' : 'none';
+  $('btnBegin').style.display = (n === 3 || n === 4) ? 'block' : 'none';
   $('wFoot').style.display = n === 1 ? 'block' : 'none';
-  // The interface question belongs with "who is walking", not halfway into
-  // choosing a plan.
   $('btnSettings').style.display = n === 1 ? 'block' : 'none';
 }
 
@@ -915,11 +1045,67 @@ function buildGuidedStep(){
   });
 }
 
+function clampHr(){
+  if (hrMin > hrMax) hrMax = hrMin;
+  if (hrMax < hrMin) hrMin = hrMax;
+}
+function renderHrSetup(){
+  $('hrMinVal').innerHTML = hrMin.toFixed(1) + '<small> km/h</small>';
+  $('hrMaxVal').innerHTML = hrMax.toFixed(1) + '<small> km/h</small>';
+  $('hrBpmVal').innerHTML = hrBpm + '<small> bpm</small>';
+}
+
+[...document.querySelectorAll('.hrbtn')].forEach(b => {
+  tap(b, () => {
+    const which = b.dataset.hr;
+    const d = parseInt(b.dataset.d, 10);
+    if (which === 'min') hrMin = Math.max(1.0, Math.min(20.0, hrMin + d * 0.5));
+    if (which === 'max') hrMax = Math.max(1.0, Math.min(20.0, hrMax + d * 0.5));
+    if (which === 'bpm') hrBpm = Math.max(80, Math.min(200, hrBpm + d * 5));
+    clampHr();
+    renderHrSetup();
+  });
+});
+tap($('hrbSuggest'), () => { if (hrSuggestKph > 0) Stride.setSpeed(hrSuggestKph); });
+
+function renderHrMini(s){
+  $('hrmMin').textContent = (s.hrTargetMinKph || 0).toFixed(1);
+  $('hrmMax').textContent = (s.hrTargetMaxKph || 0).toFixed(1);
+  $('hrmBpm').textContent = s.hrTargetBpm || 0;
+}
+
+tap($('btnHrEdit'), () => {
+  $('hreMinVal').innerHTML = hrMin.toFixed(1) + '<small> km/h</small>';
+  $('hreMaxVal').innerHTML = hrMax.toFixed(1) + '<small> km/h</small>';
+  $('hreBpmVal').innerHTML = hrBpm + '<small> bpm</small>';
+  $('hredit').classList.add('show');
+});
+[...document.querySelectorAll('[data-hre]')].forEach(b => {
+  tap(b, () => {
+    const which = b.dataset.hre;
+    const d = parseInt(b.dataset.d, 10);
+    if (which === 'min') hrMin = Math.max(1.0, Math.min(20.0, hrMin + d * 0.5));
+    if (which === 'max') hrMax = Math.max(1.0, Math.min(20.0, hrMax + d * 0.5));
+    if (which === 'bpm') hrBpm = Math.max(80, Math.min(200, hrBpm + d * 5));
+    clampHr();
+    $('hreMinVal').innerHTML = hrMin.toFixed(1) + '<small> km/h</small>';
+    $('hreMaxVal').innerHTML = hrMax.toFixed(1) + '<small> km/h</small>';
+    $('hreBpmVal').innerHTML = hrBpm + '<small> bpm</small>';
+  });
+});
+tap($('btnHrEditDone'), () => {
+  Stride.setHrTarget(hrMin, hrMax, hrBpm);
+  $('hredit').classList.remove('show');
+});
+
+
 buildPeople();
-tap($('pickCasual'), () => Stride.choose());
-tap($('pickGuided'), () => { planMode = 'shapes'; chosenRoute = null; chosenLoop = false;
+
+tap($('pickCasual'), () => { controlMode = 'casual'; Stride.choose(); });
+tap($('pickGuided'), () => { controlMode = 'guided'; planMode = 'shapes'; chosenRoute = null; chosenLoop = false;
                              buildGuidedStep(); showStep(3); });
-tap($('pickRoutes'), () => { planMode = 'routes'; buildGuidedStep(); showStep(3); });
+tap($('pickRoutes'), () => { controlMode = 'routes'; planMode = 'routes'; buildGuidedStep(); showStep(3); });
+tap($('pickHrTarget'), () => { controlMode = 'hrtarget'; renderHrSetup(); showStep(4); });
 tap($('btnBack'), () => showStep(Math.max(1, stepNow - 1)));
 /* Tapping the suggestion takes it. Accepting the coach's number used to
    mean holding + until you reached it. */
@@ -927,6 +1113,7 @@ tap($('suggest'), () => { if (suggestKph > 0) Stride.setSpeed(suggestKph); });
 
 tap($('btnBegin'), () => {
   // A route carries its own length, so it never takes a duration.
+  if (controlMode === 'hrtarget') { Stride.chooseHrTarget(hrMin, hrMax, hrBpm); return; }
   if (planMode === 'routes') { if (chosenRoute) Stride.chooseRoute(chosenRoute, chosenLoop); }
   else Stride.chooseGuided(chosenShape, chosenMinutes);
 });
@@ -1590,8 +1777,10 @@ window.render = function(s){
      do not. The oval counts laps instead, which is the thing a casual walk
      actually accumulates. */
   const guided = (s.segments || 0) > 0;
-  $('path').style.display = (!timed && guided) ? 'block' : 'none';
-  $('stage').style.display = (!timed && !guided) ? 'block' : 'none';
+  const hrTargetMode = (s.hrTargetBpm || 0) > 0;
+  $('path').style.display = (!timed && guided && !hrTargetMode) ? 'block' : 'none';
+  $('stage').style.display = (!timed && !guided && !hrTargetMode) ? 'block' : 'none';
+  $('hrBadge').classList.toggle('show', !timed && hrTargetMode);
 
   if (!timed && !guided) {
     // Dot travels the current lap; the arc behind it is the lap just finished,
@@ -1662,6 +1851,24 @@ window.render = function(s){
       suggestKph = 0;
     }
   }
+
+  $('hrMini').classList.toggle('show', !timed && hrTargetMode);
+  if (!timed && hrTargetMode) {
+    $('hrbTarget').textContent = s.hrTargetBpm || 0;
+    $('hrbCurrent').innerHTML = (s.pulse ? s.pulse : '—') + '<small> bpm</small>';
+    const sugg = s.hrSuggestKph || 0;
+    hrSuggestKph = sugg;
+    const delta = sugg - (s.targetSpeed || 0);
+    const actionable = sugg > 0 && Math.abs(delta) > 0.15;
+    const verb = delta > 0.15 ? 'lift to' : 'ease to';
+    $('hrbSuggest').classList.toggle('quiet', !actionable);
+    $('hrbSuggest').innerHTML = actionable
+      ? verb + ' <b>' + sugg.toFixed(1) + '</b> km/h'
+      : 'holding well — keep it here';
+
+    renderHrMini(s);
+  }
+
   if (timed){
     const total = 120;                       // WARMUP_MS / COOLDOWN_MS
     const left = (s.phaseLeft != null ? s.phaseLeft : 0);

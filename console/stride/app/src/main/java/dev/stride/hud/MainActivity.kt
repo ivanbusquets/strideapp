@@ -621,6 +621,17 @@ class MainActivity : Activity() {
      */
     @Volatile private var baselineKph = 0.0
 
+    // --- HR Target mode ---------------------------------------------------
+    /** The bpm being aimed for. 0 when this mode is not active — see
+    *  chooseHrTarget(). */
+    @Volatile private var hrTargetBpm = 0
+    @Volatile private var hrTargetMinKph = 0.0
+    @Volatile private var hrTargetMaxKph = 0.0
+    /** The speed HrTarget is currently suggesting. Never applied to the belt
+    *  automatically — see HrTarget.kt and SAFETY.md. */
+    @Volatile private var hrSuggestKph = 0.0
+    private val hrTarget = HrTarget()
+
     /**
      * Cleared the moment he touches INCLINE, and only restored at the next
      * segment. A plan that argues with the person on the treadmill about the
@@ -928,6 +939,8 @@ class MainActivity : Activity() {
             planName = template.name
             stepIndex = -1
             baselineKph = 0.0
+            hrTargetBpm = 0
+            hrSuggestKph = 0.0
             inclineAuto = true
             lastInclineMoveAt = 0L
 
@@ -999,6 +1012,8 @@ class MainActivity : Activity() {
             planName = r.name
             stepIndex = -1
             baselineKph = 0.0
+            hrTargetBpm = 0
+            hrSuggestKph = 0.0
             inclineAuto = true
             lastInclineMoveAt = 0L
 
@@ -1022,11 +1037,47 @@ class MainActivity : Activity() {
             repaint()
         }
 
+        /**
+        * Start an HR Target walk: hold a heart rate, within a speed range the
+        * walker set themselves.
+        *
+        * Nothing here ever sets the belt speed on its own: the console computes a *suggestion*
+        * (see [HrTarget]) and the walker takes it by tapping it, exactly like a
+        * guided walk's pace hint.
+        */
+
+        @JavascriptInterface fun chooseHrTarget(requestedMinKph: Double, requestedMaxKph: Double, targetBpm: Int) {
+            if (dmk) return
+            clearPlan()
+            resetSession()
+            hrTargetMaxKph = requestedMaxKph.coerceIn(minKph, maxKph)
+            hrTargetMinKph = requestedMinKph.coerceIn(minKph, hrTargetMaxKph)
+            hrTargetBpm = targetBpm.coerceIn(60, 220)
+            hrTarget.reset()
+            hrSuggestKph = 0.0
+
+            workout = WORKOUT
+            session = Session.WARMUP
+            activeSince = SystemClock.elapsedRealtime()
+            phaseEndsAt = activeSince + cfg.warmupMs()
+            targetKph = 0.0
+            rampTo = cfg.warmupKph()
+            rampReason = "warmup"
+            pendingWrite = mapOf(
+                FitPro.Field.GRADE to 0.0,
+                FitPro.Field.WORKOUT_MODE to FitPro.Mode.RUNNING.toDouble(),
+            )
+            Log.i(TAG, "HR target walk: ${"%.1f".format(hrTargetMinKph)}..${"%.1f".format(hrTargetMaxKph)} km/h, " +
+                    "target $hrTargetBpm bpm")
+            repaint()
+        }
+
         /** Straight to the workout proper, keeping whatever pace is set. */
         @JavascriptInterface fun skipWarmup() {
             if (session != Session.WARMUP) return
             session = Session.ACTIVE
             phaseEndsAt = 0L
+            foldWarmupIntoTotals()
             Log.i(TAG, "warm-up skipped")
             repaint()
         }
@@ -1196,6 +1247,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun speed(delta: Double) {
             if (!Session.isMoving(session) || dmk) return
             rampTo = 0.0; rampReason = ""   // manual control abandons the ramp
+            if (hrTargetBpm > 0) hrTarget.reset()   // manual override — re-arm clean
             var next = targetKph + delta
             // Below the machine's minimum there is no "slow", only stopped —
             // so stepping down out of the bottom of the range means stop, and
@@ -1219,6 +1271,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun setSpeed(kph: Double) {
             if (!Session.isMoving(session) || dmk) return
             rampTo = 0.0; rampReason = ""   // as with any manual change
+            if (hrTargetBpm > 0) hrTarget.reset()
             targetKph = if (kph < minKph) 0.0 else kph.coerceIn(0.0, maxKph)
             pendingWrite = mapOf(FitPro.Field.KPH to targetKph)
             Log.i(TAG, "pace: took the suggestion, ${"%.1f".format(targetKph)} km/h")
@@ -1242,6 +1295,21 @@ class MainActivity : Activity() {
             }
             targetGrade = (targetGrade + delta).coerceIn(minGrade, maxGrade)
             pendingWrite = mapOf(FitPro.Field.GRADE to targetGrade)
+        }
+
+        /**
+        * Change HR Target's bounds or target bpm mid-walk. Takes effect
+        * immediately for the next suggestion; the belt itself is untouched, same
+        * as every other HR Target change — see chooseHrTarget.
+        */
+        @JavascriptInterface fun setHrTarget(minKphIn: Double, maxKphIn: Double, bpm: Int) {
+            if (hrTargetBpm <= 0) return   // not in this mode
+            hrTargetMaxKph = maxKphIn.coerceIn(minKph, maxKph)
+            hrTargetMinKph = minKphIn.coerceIn(minKph, hrTargetMaxKph)
+            hrTargetBpm = bpm.coerceIn(60, 220)
+            hrTarget.reset()
+            Log.i(TAG, "HR target updated mid-walk: ${"%.1f".format(hrTargetMinKph)}.." +
+                    "${"%.1f".format(hrTargetMaxKph)} km/h, target $hrTargetBpm bpm")
         }
 
         /** Off → Low → Medium → High → Auto → Off */
@@ -2068,6 +2136,8 @@ class MainActivity : Activity() {
         planLoops = false
         planLap = 1
         planElapsed = 0.0
+        hrTargetBpm = 0
+        hrSuggestKph = 0.0
     }
 
     /** The segment the walk is currently in, or null on a casual walk. */
@@ -2967,6 +3037,11 @@ class MainActivity : Activity() {
         if (Session.isMoving(session)) {
             // A route is ground, not a timetable — see routeTick.
             if (route != null) routeTick(sessionDistance) else planTick(elapsedNow)
+
+            if (hrTargetBpm > 0 && session == Session.ACTIVE && rampTo <= 0.0) {
+                hrTarget.update(pulse, hrTargetBpm, targetKph, hrTargetMinKph, hrTargetMaxKph)
+                hrSuggestKph = hrTarget.suggestKph
+            }
         }
         val step = currentStep()
 
@@ -3040,6 +3115,10 @@ class MainActivity : Activity() {
             } else 0.0,
             inclineAuto = inclineAuto,
             boardLocked = boardLocked,
+            hrTargetBpm = hrTargetBpm,
+            hrTargetMinKph = hrTargetMinKph,
+            hrTargetMaxKph = hrTargetMaxKph,
+            hrSuggestKph = hrSuggestKph,
         )
     }
 

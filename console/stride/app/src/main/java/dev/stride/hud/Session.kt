@@ -187,6 +187,15 @@ data class Snapshot(
      *  one is "the board is not answering", the other is "the board wants us to
      *  authenticate and we are doing it". */
     val boardLocked: Boolean = false,
+    /** HR Target mode: the bpm being aimed for, 0 when the mode is not active. */
+    val hrTargetBpm: Int = 0,
+    /** HR Target mode's speed bounds, km/h. Zero when not active. */
+    val hrTargetMinKph: Double = 0.0,
+    val hrTargetMaxKph: Double = 0.0,
+    /** HR Target mode's suggested speed, km/h — a suggestion only, exactly like
+    *  [suggestPace] for a guided walk. Nothing here ever sets the belt speed;
+    *  see HrTarget.kt and SAFETY.md. */
+    val hrSuggestKph: Double = 0.0,
 ) {
     val mode: String get() = Session.name(session)
 
@@ -289,6 +298,10 @@ data class Snapshot(
         append("\"planLap\":$planLap,")
         append("\"planLoops\":$planLoops,")
         append("\"suggestPace\":${"%.1f".format(suggestPace)},")
+        append("\"hrTargetBpm\":$hrTargetBpm,")
+        append("\"hrTargetMinKph\":${"%.1f".format(hrTargetMinKph)},")
+        append("\"hrTargetMaxKph\":${"%.1f".format(hrTargetMaxKph)},")
+        append("\"hrSuggestKph\":${"%.1f".format(hrSuggestKph)},")
         append("\"inclineAuto\":$inclineAuto,")
         append("\"mode\":\"$mode\"")
         append("}")
