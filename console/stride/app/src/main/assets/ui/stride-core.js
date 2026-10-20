@@ -1210,6 +1210,44 @@ function nf(n) {
  *  still for two minutes at a time, which reads as a frozen display. */
 function km(m, dp) { return ((m || 0) / 1000).toFixed(dp == null ? 2 : dp); }
 
+/* --- pace ----------------------------------------------------------------
+   Pace is minutes-plus-seconds per km or per mile. It lives in the core, not
+   in each layout, because three of them now carry a readout and three copies
+   of the same arithmetic is three places for the units to drift apart. */
+
+/* Kilometres in a mile. Only the pace readout works in miles, and the console
+   stores distances and speeds in km either way. */
+var MI_KM = 1.609344;
+
+/* Which units the pace is written in. The rest of the console reads this from
+   the Setting bundle the same way — see people()/defaultWalker() — and with
+   the same guard: `settingsJson` is not in the standalone stub, so a desktop
+   browser with no console behind it falls back to km rather than throwing.
+   `?units=mi` previews the other setting offline, in the spirit of the
+   existing `?screen=` / `?asleep=` query flags. */
+function paceUnits() {
+  var m = /(^|[?&])units=([^&]+)/.exec(global.location.search);
+  if (m) return decodeURIComponent(m[2]) === 'mi' ? 'mi' : 'km';
+  try { return JSON.parse(global.Stride.settingsJson()).units === 'mi' ? 'mi' : 'km'; }
+  catch (e) { return 'km'; }
+}
+
+/* Pace for a commanded speed, as minutes-plus-seconds per km or per mile.
+   Below 0.6 km/h a pace is not a reading, it is noise — that is a 100 min/km
+   crawl, and every treadmill minimum speed sits above it — so the element
+   shows `--'--"` rather than a 3-digit minute count or Infinity. Zero speed
+   lands here too, which is the belt stopped. */
+function paceText(speedKph, units) {
+  var suffix = units === 'mi' ? '/mi' : '/km';
+  var kph = speedKph != null ? speedKph : 0;
+  if (!(kph >= 0.6)) return { value: "--'--\"", unit: suffix };
+  var mins = (units === 'mi' ? 60 * MI_KM : 60) / kph;
+  var total = Math.round(mins * 60);        // whole seconds, so 59.6s carries
+  var mm = Math.floor(total / 60);
+  var ss = total % 60;
+  return { value: mm + "'" + (ss < 10 ? '0' : '') + ss + '"', unit: suffix };
+}
+
 var FAN_NAMES = ['OFF', 'LOW', 'MEDIUM', 'HIGH', 'AUTO'];
 function fanName(n) { return FAN_NAMES[n] || 'OFF'; }
 /** The control row's own label: "OFF" or "2 OF 4". */
@@ -1646,6 +1684,8 @@ global.STRIDE = {
   mmss: mmss,
   nf: nf,
   km: km,
+  paceUnits: paceUnits,
+  paceText: paceText,
   durationLabel: durationLabel,
   fanName: fanName,
   fanLabel: fanLabel,

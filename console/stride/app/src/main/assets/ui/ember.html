@@ -171,12 +171,21 @@ button{font-family:inherit;color:inherit;background:none;border:none;
 
 /* The two figures. Thin and very large is what makes these readable across a
    room; the open tracking is what keeps them from reading as one blob. */
-.gauge{position:absolute;top:196px}
+/* Lifted 46 px from 196: the coach ribbon docks full width at 418, and the pace
+   readout added under the speed has to stay clear of it. Both gauges move
+   together so the two caps stay on one line. */
+.gauge{position:absolute;top:150px}
 .gauge.l{left:40px;width:300px}
 .gauge.r{right:40px;width:320px;text-align:right}
 .gauge .v{font-size:152px;font-weight:200;line-height:.92;margin-top:14px;
           letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .gauge .u{margin-top:10px;font-size:19px;color:var(--dim)}
+/* Pace under the speed, read off the same belt speed the figure shows. A second
+   figure in the gauge's own hand — thin, wide-tracked — not a caption. Kept
+   above 418 so the docked coach ribbon can never cover it. */
+.gauge .pace{margin-top:2px;font-size:60px;font-weight:200;line-height:.92;
+             letter-spacing:-.03em;color:var(--dim);font-variant-numeric:tabular-nums}
+.gauge .pace .paceu{font-size:20px;margin-left:8px;color:var(--dim)}
 .gauge .bar{margin-top:28px;width:200px;height:6px;background:var(--line);position:relative}
 /* Left and width are both driven, so the fill can grow either side of the zero
    mark — a decline is a bar running backwards, not an empty track. */
@@ -448,6 +457,7 @@ button{font-family:inherit;color:inherit;background:none;border:none;
     <div class="cap">SPEED</div>
     <div class="v" id="speed">0.0</div>
     <div class="u">km/h</div>
+    <div class="pace"><span id="pace">--'--"</span><span class="paceu" id="paceUnit">/km</span></div>
     <div class="sug" id="suggest"></div>
   </div>
 
@@ -964,6 +974,10 @@ window.render = function(raw){
   /* Belt figures, always from the hardware. */
   $('incline').textContent = s.belt.incline.toFixed(1);
   $('speed').textContent   = s.belt.speed.toFixed(1);
+  /* Pace off the same belt speed the figure shows, so the two cannot disagree. */
+  const pace = STRIDE.paceText(s.belt.speed, STRIDE.paceUnits());
+  $('pace').textContent     = pace.value;
+  $('paceUnit').textContent = pace.unit;
   $('inclineNote').textContent = !guided ? 'yours'
                                : s.targets.inclineAuto ? 'set for you'
                                : 'yours until the next stretch';

@@ -95,14 +95,17 @@ body::before{
   font-variant-numeric:tabular-nums;
 }
 .side .unit{font-size:18px;color:var(--ink-dim);margin-top:4px}
-/* Current pace, read off the same setpoint the speed above it shows. Compact
-   by necessity: the 104 px value and the tick column already fill the hero
-   band, which ends at 466. */
+/* Current pace, read off the same setpoint the speed above it shows. As large
+   as the 250 px column takes without running the unit off the panel: at the
+   speed's own 104 px a mm'ss" value is ~385 px wide with its unit, far wider
+   than the column holds, so 60 px it is — three times the old 20 px, unit kept
+   at the speed unit's own 18 px. The taller line still needs height the column
+   did not have, taken back from the tick column below. */
 .side .pace{
-  margin-top:6px;font-size:20px;font-weight:200;color:var(--ink-dim);
-  font-variant-numeric:tabular-nums;
+  margin-top:6px;font-size:60px;font-weight:200;line-height:.9;
+  color:var(--ink-dim);font-variant-numeric:tabular-nums;
 }
-.side .pace .paceu{font-size:15px;margin-left:3px}
+.side .pace .paceu{font-size:18px;margin-left:3px}
 .side .target{
   margin-top:14px;font-size:15px;color:var(--ink-faint);
   font-variant-numeric:tabular-nums;
@@ -115,9 +118,9 @@ body::before{
 .ticks i{display:block;width:44px;height:3px;margin-top:5px;background:var(--track-line);border-radius:2px;transition:background .25s}
 .ticks i.on{background:var(--accent)}
 .side.right .ticks i.on{background:var(--accent-warm)}
-/* Trimmed only on the right, to give the pace line its 30 px back: the column
-   is 10 marks and 80 px of them, so 96 still shows every one. */
-.side.right .ticks{height:96px}
+/* Trimmed on the right to give the taller pace line its height back: the column
+   is 10 marks and 80 px of them, so 80 shows every one. */
+.side.right .ticks{margin-top:8px;height:80px}
 
 /* ---- centre: track ------------------------------------------------------
    The rail, the lanes and the head dot are all generated from STRIDE.track
@@ -1726,38 +1729,8 @@ window.coach = function(c){
 
 /* --- render -------------------------------------------------------------- */
 
-/* Kilometres in a mile. Local to the pace readout — nothing else here works in
-   miles, and the console stores distances and speeds in km either way. */
-const MI_KM = 1.609344;
-
-/* Which units the pace is written in. The rest of the console reads this from
-   the Setting bundle the same way — see stride-core people()/defaultWalker() —
-   and with the same guard: `settingsJson` is not in the standalone stub, so a
-   desktop browser with no console behind it falls back to km rather than
-   throwing. `?units=mi` previews the other setting offline, in the spirit of
-   the existing `?screen=` / `?asleep=` query flags. */
-function paceUnits(){
-  const m = /(^|[?&])units=([^&]+)/.exec(window.location.search);
-  if (m) return decodeURIComponent(m[2]) === 'mi' ? 'mi' : 'km';
-  try { return JSON.parse(Stride.settingsJson()).units === 'mi' ? 'mi' : 'km'; }
-  catch (e) { return 'km'; }
-}
-
-/* Pace for a commanded speed, as minutes-plus-seconds per km or per mile.
-   Below 0.6 km/h a pace is not a reading, it is noise — that is a 100 min/km
-   crawl, and every treadmill minimum speed sits above it — so the element
-   shows `--'--"` rather than a 3-digit minute count or Infinity. Zero speed
-   lands here too, which is the belt stopped. */
-function paceText(speedKph, units){
-  const suffix = units === 'mi' ? '/mi' : '/km';
-  const kph = speedKph != null ? speedKph : 0;
-  if (!(kph >= 0.6)) return { value: "--'--\"", unit: suffix };
-  const mins = (units === 'mi' ? 60 * MI_KM : 60) / kph;
-  const total = Math.round(mins * 60);        // whole seconds, so 59.6s carries
-  const mm = Math.floor(total / 60);
-  const ss = total % 60;
-  return { value: mm + "'" + (ss < 10 ? '0' : '') + ss + '"', unit: suffix };
-}
+/* The pace arithmetic — units and the mm'ss" formatting — lives in stride-core
+   so the three layouts that carry a readout share one implementation. */
 
 window.render = function(s){
   const mode = (s.mode || 'welcome').toLowerCase();
@@ -1768,7 +1741,7 @@ window.render = function(s){
   if (mode === 'welcome') return;
 
   $('speed').textContent   = ((s.speed != null ? s.speed : 0)).toFixed(1);
-  const pace = paceText(s.speed, paceUnits());
+  const pace = STRIDE.paceText(s.speed, STRIDE.paceUnits());
   $('pace').textContent     = pace.value;
   $('paceUnit').textContent = pace.unit;
   $('incline').textContent = ((s.incline != null ? s.incline : 0)).toFixed(1);
