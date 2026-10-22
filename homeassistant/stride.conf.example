@@ -106,6 +106,31 @@ diastolic_entity:
 withings_steps_entity:
 
 
+# === The walk listener =====================================================
+# Optional. Only needed if you want the console's walk files to arrive
+# somewhere.
+#
+# The console writes two files per walk — a CSV of every second and a
+# summary — and POSTs them to a listener on your network when the walk ends.
+# Run `python3 stride_walk_listener.py` on any machine on the network, then
+# point the console's Settings -> Walk log at it:
+#
+#     http://<that machine>:8099/walk
+#
+# The listener's own settings. Both are optional; the defaults are what the
+# script prints when it starts.
+#
+# Where the received walks are kept. A relative path is relative to the
+# script.
+walk_log_dir: walks
+
+# The port it listens on, and the address it binds to. 0.0.0.0 is every
+# interface, which is what a listener on the network needs; 127.0.0.1 would
+# be reachable only from the machine it runs on.
+walk_listener_host: 0.0.0.0
+walk_listener_port: 8099
+
+
 # === The dashboard ==========================================================
 
 # Console walkers to show treadmill tiles for, comma separated, using the ids

@@ -100,6 +100,13 @@ android {
          */
         disable += "ExpiredTargetSdkVersion"
     }
+    testOptions {
+        // `android.util.Log` is a stub in a unit test and throws by default.
+        // The code under test here does not log, but the classes it calls
+        // into do, and a test that fails because of a log line is a test
+        // that lies about what is broken.
+        unitTests.isReturnDefaultValues = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -111,4 +118,15 @@ dependencies {
     // Plain Java Paho client — the Android "service" variant needs AndroidX,
     // which this app deliberately avoids.
     implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+
+    // Unit tests only — nothing here reaches the APK. JUnit is the Android
+    // standard and the only test dependency, because the only tests are
+    // the ones that do not need a device.
+    testImplementation("junit:junit:4.13.2")
+
+    // The real org.json, for unit tests only. On a device `org.json` is
+    // part of the platform; in a unit test it is a stub that returns null
+    // for everything, which makes any test that touches a JSONObject fail
+    // for a reason that has nothing to do with the code.
+    testImplementation("org.json:json:20240303")
 }

@@ -342,6 +342,47 @@ message appears on `sensor.stride_coach`.
 After `stride_persons.py`, the console's **Settings → Who walks** lists your
 Home Assistant people under *From Home Assistant*.
 
+### 2.4 Optional: sending the walk files somewhere
+
+The console can write out every walk as two files — a CSV of every second and
+a summary — and POST both to a listener on your network when the walk ends.
+Off by default; there is a switch for it under **Settings → Walk log**.
+
+The receiving end is
+[`homeassistant/stride_walk_listener.py`](../homeassistant/stride_walk_listener.py).
+It is a small standalone HTTP server, standard library only.
+
+1. On any machine on your network, from the `homeassistant` directory:
+
+   ```sh
+   python3 stride_walk_listener.py
+   ```
+
+   It prints the address to point the console at, and where it is keeping the
+   walks. `walk_log_dir`, `walk_listener_host` and `walk_listener_port` in
+   `stride.conf` change those.
+
+2. On the console, go to **Settings → Walk log**. Turn **Send my walks** on
+   and enter the address it printed, including the path:
+
+   ```
+   http://<that machine>:8099/walk
+   ```
+
+3. Tap **SEND NOW**. The console has nothing waiting yet, so this is mostly a
+   check that the address is right.
+
+✅ After a walk, two files appear in the walk directory, named with the same
+walk id.
+
+If the listener is switched off when a walk ends, the files stay on the
+console and are sent at the end of the next walk instead. Nothing is lost and
+nothing is sent twice.
+
+> The listener takes files from the network and writes them to disk, so run it
+> on a machine you trust, on a network you trust. There is no
+> authentication on it and none is offered.
+
 ---
 
 ## Part 3. Apple Health (iPhone)
@@ -385,6 +426,8 @@ Most likely to be wrong:
 - **Steps 1.1 to 1.4.** Written up after the fact. Nobody has followed this page
   on a freshly reset machine.
 - **Step 2.2.** Never installed on a clean Home Assistant.
+- **Step 2.4.** The listener has been run and its files read, but the console's
+  side of it has not been walked through end to end on a treadmill.
 - **Every ✅ check.** If one does not happen, that is the bug.
 - **Anything you had to work out that is not written down.**
 

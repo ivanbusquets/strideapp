@@ -170,6 +170,14 @@ your Home Assistant config. The console's distance counter resets every walk,
 so the accumulating has to happen in HA. That file also creates the helpers the
 coach and reminders need.
 
+**The walk log is optional.** Settings → Walk log turns it on and asks for a
+URL. When it's on, every qualifying walk is written to the console as two
+files — a CSV of every second and a summary — and both are POSTed to that URL
+when the walk ends. If the listener can't be reached, the files stay on the
+console and are sent at the end of the next walk instead. The receiving end is
+[`homeassistant/stride_walk_listener.py`](homeassistant/stride_walk_listener.py);
+run it on any machine on your network and point the console at it.
+
 ---
 
 ## How it's put together
@@ -191,6 +199,14 @@ A few decisions that will save you reading the code to find them.
   fresh.
 - **Coaching and recording are per person, not per console.** Guests get
   neither. They're summarised at the end of a walk and then forgotten.
+- **A walk is written down as it happens, not afterwards.** The per-second
+  CSV is appended and flushed a row at a time, so a console that loses
+  power in the middle of a workout costs the last row and not the whole
+  file. A treadmill gets switched off at the wall.
+- **Files are removed only once the other end has them.** A walk that
+  could not be delivered stays on the console and is sent at the end of the
+  next walk, oldest first. A console that cannot reach the listener
+  accumulates walks rather than losing them, and says so in the log.
 
 ---
 

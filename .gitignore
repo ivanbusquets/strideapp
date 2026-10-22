@@ -20,6 +20,16 @@ console/*/.gradle/
 *.iml
 .idea/
 
+# --- received walks ---------------------------------------------------------
+# The walk listener's output: one CSV of every second and one summary per
+# walk, named by walk id.
+#
+# Ignored because it is health data about real people, and because it
+# accumulates a file per walk for as long as the listener runs. The
+# directory is the listener's default, so anybody who runs it as
+# documented gets this for free.
+homeassistant/walks/
+
 # --- private working notes --------------------------------------------------
 # The build journal, session plans and the v1.0 prep document. Kept locally
 # because they are useful, out of git because every one of them names people,

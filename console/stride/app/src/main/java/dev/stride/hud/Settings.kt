@@ -81,6 +81,10 @@ class Settings(context: Context) {
         const val HR_ADDR = "hr_addr"
         const val HR_NAME = "hr_name"
 
+        // --- walk log ---
+        const val WALK_LOG_ON = "walk_log_on"
+        const val WALK_LOG_URL = "walk_log_url"
+
         // --- display ---
         const val SLEEP_MIN = "sleep_min"
         const val CLOCK_24 = "clock_24"
@@ -379,6 +383,35 @@ class Settings(context: Context) {
         prefs.edit().remove(HR_ADDR).remove(HR_NAME).apply()
     }
 
+    // --- walk log -------------------------------------------------------------
+
+    /**
+     * Whether every qualifying walk is written out and sent.
+     *
+     * **Off until somebody sets a destination.** A console that quietly
+     * started posting every walk to a URL nobody chose would be a console
+     * sending somebody's health data somewhere without being asked, and the
+     * default that keeps that from happening is "off".
+     *
+     * It is also off while no destination is set, whatever the switch says —
+     * see [walkLogOn].
+     */
+    fun walkLogOn(): Boolean =
+        prefs.getBoolean(WALK_LOG_ON, false) && walkLogUrl().isNotBlank()
+
+    /** The switch as stored, whether or not it has a destination to use. */
+    fun walkLogEnabled(): Boolean = prefs.getBoolean(WALK_LOG_ON, false)
+
+    /**
+     * Where the walk files are sent.
+     *
+     * A plain http address on the home network is the expected case: the
+     * console's clock reads 2022 until NTP reaches it, so TLS validation
+     * fails on anything served over https. The same reason the coach's audio
+     * is fetched over plain http — see the manifest.
+     */
+    fun walkLogUrl(): String = (prefs.getString(WALK_LOG_URL, "") ?: "").trim()
+
     // --- display --------------------------------------------------------------
 
     fun sleepMs(): Long = prefs.getInt(SLEEP_MIN, 5) * 60_000L
@@ -433,6 +466,8 @@ class Settings(context: Context) {
         .put(HR_SOURCE, hrSource())
         .put(HR_ADDR, hrAddr())
         .put(HR_NAME, hrName())
+        .put(WALK_LOG_ON, walkLogEnabled())
+        .put(WALK_LOG_URL, walkLogUrl())
         .put(SLEEP_MIN, prefs.getInt(SLEEP_MIN, 5))
         .put(CLOCK_24, clock24())
         .put(BRIGHTNESS, prefs.getString(BRIGHTNESS, "normal"))
@@ -448,7 +483,8 @@ class Settings(context: Context) {
         val e = prefs.edit()
         when (key) {
             ALLOW_GUEST, HA_ENABLED, MQTT_TLS, COACH_ON, COACH_REMOTE,
-            COACH_MILESTONES, CLOCK_24, KEEP_AWAKE, RESET_AFTER_WARMUP ->
+            COACH_MILESTONES, CLOCK_24, KEEP_AWAKE, RESET_AFTER_WARMUP,
+            WALK_LOG_ON ->
                 e.putBoolean(key, value == "true" || value == "1")
 
             MQTT_PORT, WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN ->

@@ -124,13 +124,12 @@ class History(context: Context) {
      * Returns the achievement lines, newest walk already accounted for.
      */
     @Synchronized
-    fun record(walk: Walk): List<String> {
-        if (walk.who.isBlank()) {
-            Log.i(TAG, "guest walk — summarised but not recorded")
-            return emptyList()
-        }
-        if (walk.distance < MIN_DISTANCE_M || walk.elapsed < MIN_ELAPSED_S) {
-            Log.i(TAG, "walk too short to record (${"%.0f".format(walk.distance)} m)")
+    fun record(walk: Walk, hasProfile: Boolean): List<String> {
+        if (!recordable(walk, hasProfile)) {
+            Log.i(TAG, if (!hasProfile)
+                "guest walk — summarised but not recorded"
+            else
+                "walk too short to record (${"%.0f".format(walk.distance)} m)")
             return emptyList()
         }
         val previous = walks.filter { it.who == walk.who }
@@ -261,6 +260,32 @@ class History(context: Context) {
 
     companion object {
         private const val TAG = "StrideHistory"
+
+        /**
+         * Whether this walk is one the console keeps.
+         *
+         * **The rule, in one place, so that anything else which writes a walk
+         * down asks the same question.** A guest's walk is summarised and
+         * forgotten; a walk under [MIN_DISTANCE_M] or [MIN_ELAPSED_S] is an
+         * interruption rather than a session. Neither is in `history.json`,
+         * and neither should leave the console in a file either — see
+         * WalkLog.
+         *
+         * The two conditions [record] checks, exactly as it checks them.
+         * They are pulled out here rather than written twice so the two can
+         * never disagree about which walks exist.
+         *
+         * @param hasProfile whether this walker is somebody the console
+         *        knows. **A guest is a walker the console has no profile
+         *        for** — the welcome screen offers "Guest" alongside the
+         *        household, and that name arrives here as an ordinary string,
+         *        so the only way to tell a guest from somebody is whether the
+         *        people list has them.
+         */
+        fun recordable(walk: Walk, hasProfile: Boolean): Boolean =
+            hasProfile &&
+            walk.distance >= MIN_DISTANCE_M &&
+            walk.elapsed >= MIN_ELAPSED_S
 
         /**
          * How many walks to keep.

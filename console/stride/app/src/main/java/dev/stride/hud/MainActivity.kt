@@ -591,6 +591,16 @@ class MainActivity : Activity() {
         walkerWeightKg = cfg.person(walker)?.weightKg ?: 0.0  // added
     }
 
+    /**
+     * Whether the current walker is somebody the console knows.
+     *
+     * A guest is a walker whose name is not in the people list — the
+     * welcome screen offers "Guest" alongside the household, and the name
+     * that arrives here is that word. A guest's walk is summarised and
+     * forgotten: no history entry, no files, nothing sent.
+     */
+    private fun hasProfile(): Boolean = cfg.person(walker) != null
+
 
     // --- guided walk ---------------------------------------------------------
     /** Empty on a casual walk. Set once at START and never rewritten mid-walk. */
@@ -903,6 +913,7 @@ class MainActivity : Activity() {
             workout = WORKOUT
             clearPlan()
             resetSession()
+            walkLog.beginWalk(walker)
             session = Session.WARMUP
             activeSince = SystemClock.elapsedRealtime()
             phaseEndsAt = activeSince + cfg.warmupMs()
@@ -951,6 +962,7 @@ class MainActivity : Activity() {
 
             workout = WORKOUT
             resetSession()
+            walkLog.beginWalk(walker)
             session = Session.ACTIVE
             activeSince = SystemClock.elapsedRealtime()
             phaseEndsAt = 0L
@@ -1024,6 +1036,7 @@ class MainActivity : Activity() {
 
             workout = WORKOUT
             resetSession()
+            walkLog.beginWalk(walker)
             session = Session.ACTIVE
             activeSince = SystemClock.elapsedRealtime()
             phaseEndsAt = 0L
@@ -1055,6 +1068,7 @@ class MainActivity : Activity() {
             if (dmk) return
             clearPlan()
             resetSession()
+            walkLog.beginWalk(walker)
             hrTargetMaxKph = requestedMaxKph.coerceIn(minKph, maxKph)
             hrTargetMinKph = requestedMinKph.coerceIn(minKph, hrTargetMaxKph)
             hrTargetBpm = targetBpm.coerceIn(60, 220)
@@ -1410,6 +1424,26 @@ class MainActivity : Activity() {
             cfg.set(key, value)
             Log.i(TAG, "settings: $key = ${if (key == Settings.MQTT_PASS) "***" else value}")
             applySetting(key)
+        }
+
+        /**
+         * What the walk log is doing: on or off, where it sends to, how many
+         * walks are waiting, and the last thing that went wrong.
+         *
+         * The settings screen reads this so it can say *why* a walk is still
+         * on the console, rather than leaving somebody to guess.
+         */
+        @JavascriptInterface fun walkLogStatus(): String = walkLog.status().toString()
+
+        /**
+         * Try to send everything that is waiting, now.
+         *
+         * Only there so the settings screen can offer a "try now" button
+         * after somebody has typed a URL and wants to see whether it works
+         * before walking half a kilometre to find out.
+         */
+        @JavascriptInterface fun walkLogSend() {
+            Thread({ walkLog.flush() }, "walk-log-send").start()
         }
 
         @JavascriptInterface fun addPerson(name: String): String {
@@ -1807,6 +1841,15 @@ class MainActivity : Activity() {
     /** Every walk this console has recorded — see History. */
     private val history by lazy { History(this) }
 
+    /**
+     * The per-second record of each walk, and the sending of it.
+     *
+     * Lazy, like [history], because it is only needed once the walk log is
+     * turned on — and a console that never turns it on should not be
+     * creating a directory of files for a feature nobody asked for.
+     */
+    private val walkLog by lazy { WalkLog(this, cfg) }
+
     /** The session's average pulse so far, or 0 if nothing ever read. */
     private fun avgPulseNow(): Int =
         if (pulseSamples > 0) (pulseSum / pulseSamples).toInt() else 0
@@ -2074,7 +2117,7 @@ class MainActivity : Activity() {
                 if (pulseSamples > 0) ", hr ${avgPulseNow()}/${maxPulse}" else "")
         // Recorded before the screen draws, so the summary can show what this
         // walk beat. Guests are summarised and forgotten — see History.record.
-        earned = history.record(History.Walk(
+        val walk = History.Walk(
             who = walker,
             startedAt = sessionStartWall(),
             elapsed = accumulatedMs / 1000.0,
@@ -2087,7 +2130,12 @@ class MainActivity : Activity() {
             avgPulse = avgPulseNow(),
             maxPulse = maxPulse,
             plan = planName,
-        ))
+        )
+        earned = history.record(walk, hasProfile())
+        // The same walk, written out as a file and sent. The summary file is
+        // the same twelve fields as the entry above, so the two cannot
+        // disagree — see WalkLog.
+        walkLog.endWalk(walk, hasProfile())
         if (earned.isNotEmpty()) Log.i(TAG, "achievements: ${earned.joinToString("; ")}")
         if (stopping) return          // the wind-down parks the machine after it
         rampReason = ""
@@ -2354,6 +2402,11 @@ class MainActivity : Activity() {
             return
         }
         resetSession()
+        // The recorded walk starts here rather than at the welcome screen,
+        // because the totals have just been zeroed — so the per-second file
+        // has to start here too, or its distance column would carry the
+        // warm-up's metres and then jump backwards.
+        walkLog.beginWalk(walker)
         Log.i(TAG, "warm-up complete — totals reset")
     }
 
@@ -2813,6 +2866,10 @@ class MainActivity : Activity() {
             watchSlip(snap)
             ftms.update(snap)
             rsc.update(snap)
+            // The per-second record of the walk, if it is being kept. It
+            // decides for itself when a second has gone by, so this can sit
+            // at the poll rate.
+            walkLog.tick(snap)
             // Through repaint() rather than push(), so the session stamped on
             // the frame is the one that is true at the moment it is handed to
             // the page. A press lands on a WebView thread and can arrive

@@ -516,6 +516,7 @@
     people: 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0',
     hr: 'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z',
     ha: 'M3 11l9-8 9 8M5 10v10h14V10',
+    walklog: 'M14 3v5h5M6 3h8l5 5v13H6zM9 13h6M9 17h6M9 9h2',
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
     coach: 'M4 5h16v11H9l-5 4V5z',
     ui: 'M3 4h18v14H3zM3 9h18M9 9v9',
@@ -528,6 +529,7 @@
     ['people', 'Who walks',      paneWho],
     ['hr',     'Heart rate',     paneHeart],
     ['ha',     'Home Assistant', paneHa],
+    ['walklog','Walk log',       paneWalkLog],
     ['deck',   'Treadmill',      paneDeck],
     ['routes', 'My routes',      paneRoutes],
     ['coach',  'Coach',          paneCoach],
@@ -997,6 +999,74 @@
       'Off lets it sleep even mid-walk, which saves the panel on long sessions.',
       toggle('keep_awake', S.keep_awake !== false)));
     sc.appendChild(g);
+  }
+
+  // --- walk log ---
+  /* Two files per walk, sent off the console at the end of the walk.
+     Off by default: a console that started posting somebody's walks to a URL
+     nobody chose would be sending health data somewhere without being asked,
+     and the default that stops that is "off". */
+  function paneWalkLog(pane) {
+    var sc = head(pane, 'Walk log',
+      'Every qualifying walk written out as two files — a CSV of every second, ' +
+      'and a summary — and sent to a listener on your network when the walk ends. ' +
+      'If the listener cannot be reached the files stay on the console and are ' +
+      'sent at the end of the next walk instead.');
+
+    var g = group('Sending');
+    g.appendChild(row('Send my walks',
+      'Off writes nothing. On records every walk and sends it when it ends.',
+      toggle('walk_log_on', S.walk_log_on === true)));
+    g.appendChild(row('Destination',
+      'The full address of the listener, including the path. ' +
+      'Plain http is fine on a home network.',
+      field('walk_log_url', S.walk_log_url)));
+    sc.appendChild(g);
+
+    var state = el('span', 'sx-state', '<i class="sx-dot"></i>Not set');
+    var sendBtn = press(el('button', 'sx-pill', 'SEND NOW'), function () {
+      state.innerHTML = '<i class="sx-dot sx-busy"></i>Sending…';
+      try { bridge().walkLogSend(); } catch (e) {}
+      setTimeout(drawState, 2500);
+    });
+    var testWrap = el('div');
+    testWrap.style.cssText = 'display:flex;align-items:center';
+    state.style.marginRight = '18px';
+    testWrap.appendChild(state);
+    testWrap.appendChild(sendBtn);
+    g.appendChild(row('Waiting to be sent',
+      'Walks that are on the console and have not been accepted yet.', testWrap));
+
+    var g2 = group('What gets recorded');
+    g2.appendChild(row('Walks',
+      'The same ones the console keeps in its own history: no guest walks, and ' +
+      'nothing under 300 m or three minutes. A walk that is not recorded on ' +
+      'the console is not sent either.',
+      el('div', 'sx-ro', 'Per person')));
+    g2.appendChild(row('The CSV',
+      'One row a second while the belt is moving: elapsed time, the speed you ' +
+      'asked for, the speed the belt actually did, incline, distance, ' +
+      'calories and pulse.',
+      el('div', 'sx-ro', 'Every second')));
+    g2.appendChild(row('The summary',
+      'The same twelve figures the console keeps in its history: who, when it ' +
+      'started, how long, how far, calories, climb, average and top speed, ' +
+      'steepest incline, average and peak pulse, and the plan.',
+      el('div', 'sx-ro', 'Once a walk')));
+    sc.appendChild(g2);
+
+    function drawState() {
+      var st = {};
+      try { st = JSON.parse(bridge().walkLogStatus()); } catch (e) {}
+      if (!st.url) state.innerHTML = '<i class="sx-dot"></i>No destination set';
+      else if (st.error) state.innerHTML = '<i class="sx-dot sx-bad"></i>' + st.error;
+      else if (st.pending > 0) {
+        state.innerHTML = '<i class="sx-dot sx-busy"></i>' + st.pending + ' waiting';
+      } else if (st.enabled) state.innerHTML = '<i class="sx-dot sx-ok"></i>Sent';
+      else state.innerHTML = '<i class="sx-dot"></i>Off';
+    }
+    drawState();
+    pane.sxTick = drawState;
   }
 
   // --- about ---
