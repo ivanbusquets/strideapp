@@ -43,8 +43,10 @@
        and its button.
      * No icon font, no Tailwind CDN. The console boots offline and the whole
        app ships in the APK, so the glyphs are a handful of inline SVG paths.
-       The type *is* the reference's: JetBrains Mono (OFL, see fonts/) ships
-       as one variable woff2 in assets, loaded below.
+       The type *is* the reference's: JetBrains Mono for every figure and
+       label, Space Grotesk (DESIGN.md's face) for the prose — the setup
+       questions, the coach, the summary heading. Both are OFL (see fonts/)
+       and ship as one variable woff2 each in assets, loaded below.
 
    Vertical budget, fixed, and the same as the reference's own once it is
    rendered at 1280x800 (its screen.png is that page centred in a 1024px
@@ -52,8 +54,9 @@
 
        52         header bus
        748        matrix: side columns full height; the centre column is
-                  80 telemetry, 600 viewport (frame + heart-rate meter),
-                  68 command deck
+                  80 telemetry, 556 viewport (frame + heart-rate meter),
+                  112 command deck — the reference's 68, grown to hold
+                  keys at twice its size
 
    Chromium 83: no flexbox `gap`, no `inset`, no `:has()`, no CSS nesting, no
    `aspect-ratio`. Grid *is* available but the columns here are flex so the
@@ -77,10 +80,14 @@
   --sans:"Space Grotesk","Inter",-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;
 }
 /* Bundled, not fetched: the console has no network at boot. One variable
-   file covers every weight used here (400-700). */
+   file per family covers every weight used here (400-700). */
 @font-face{
   font-family:"JetBrains Mono";font-style:normal;font-weight:100 800;
   src:url("fonts/JetBrainsMono-wght.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Space Grotesk";font-style:normal;font-weight:300 700;
+  src:url("fonts/SpaceGrotesk-wght.woff2") format("woff2");
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{
@@ -207,7 +214,7 @@ button{
 .pgrid button{
   width:88px;height:72px;margin:0 8px 8px 0;border-radius:8px;
   border:1px solid var(--line);background:var(--panel2);color:var(--ink);
-  font-size:14px;font-weight:600;text-align:center;
+  font-size:28px;font-weight:600;letter-spacing:-.03em;text-align:center;
   display:flex;align-items:center;justify-content:center;
 }
 .pgrid button:nth-child(3n){margin-right:0}
@@ -265,7 +272,7 @@ button{
 /* the oval: the reference's 680x370 drawing at its rendered 0.894 scale,
    fixed rather than `meet`-scaled so the two readouts can be placed on it */
 .ovalbox{position:absolute;left:50%;top:50%;width:608px;height:331px;
-         margin-left:-304px;margin-top:-165.5px}
+         margin-left:-304px;margin-top:-165.5px;transform-origin:50% 50%}
 .ovalbox svg{position:absolute;left:0;top:0;display:block}
 .ov{position:absolute;top:0;bottom:0;width:220px;margin-left:-110px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -338,31 +345,35 @@ button{
    COOL DOWN and STOP, at the foot of the centre column. The reference's
    PAUSE SESSION is not here: on this console STOP *is* pause — it halts the
    belt and puts RESUME / END under your finger — and a second key wired to
-   the same call would be a promise the machine does not keep. */
-.cdeck{flex:none;height:68px;background:var(--panel);border-top:1px solid var(--line);
+   the same call would be a promise the machine does not keep.
+
+   Both keys are twice the reference's size (88px tall, 24px type): they are
+   the two things reached for in a hurry, mid-stride. The deck grows to hold
+   them and the viewport above pays for it. */
+.cdeck{flex:none;height:112px;background:var(--panel);border-top:1px solid var(--line);
        display:flex;align-items:center;justify-content:center;padding:0 24px;
        position:relative;z-index:45}
-.cdeck button{height:44px;border-radius:22px;display:flex;align-items:center;
-              font-size:12px;white-space:nowrap}
-.cdeck button svg{width:18px;height:18px;display:block;flex:none}
+.cdeck button{height:88px;border-radius:44px;display:flex;align-items:center;
+              font-size:24px;white-space:nowrap}
+.cdeck button svg{width:36px;height:36px;display:block;flex:none}
 .cdeck button.act{
-  padding:0 24px;border:1px solid rgba(54,58,69,.6);
+  padding:0 48px;border:1px solid rgba(54,58,69,.6);
   background:linear-gradient(180deg,#22242a 0%,#17181c 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 3px 5px rgba(0,0,0,.6);
   font-weight:600;letter-spacing:.05em;color:var(--ink);
 }
-.cdeck button.act svg{margin-right:8px}
-.cdeck button.act.down,.cdeck button.act:active{transform:translateY(1.5px)}
+.cdeck button.act svg{margin-right:16px}
+.cdeck button.act.down,.cdeck button.act:active{transform:translateY(2px)}
 .cdeck button.stop{
-  margin-left:14px;padding:0 32px;
+  margin-left:20px;padding:0 64px;
   background:linear-gradient(180deg,#dc2626 0%,#b91c1c 100%);
   border:1px solid rgba(248,113,113,.5);color:#fff;font-weight:700;
   letter-spacing:.18em;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 4px 10px rgba(0,0,0,.7),
              0 0 16px rgba(220,38,38,.4);
 }
-.cdeck button.stop svg{margin-right:10px}
-.cdeck button.stop.down,.cdeck button.stop:active{transform:translateY(2px);
+.cdeck button.stop svg{margin-right:20px}
+.cdeck button.stop.down,.cdeck button.stop:active{transform:translateY(3px);
   box-shadow:inset 0 2px 4px rgba(0,0,0,.8)}
 .cdeck button.mute{opacity:.4}
 
@@ -681,7 +692,8 @@ button{
                         stroke="#2a2e37" stroke-width="1.2" stroke-dasharray="6 6"/>
                   <rect x="68" y="60" width="544" height="250" rx="125" ry="125"
                         stroke="#2a2e37" stroke-width="1.2" stroke-dasharray="6 6"/>
-                  <path id="lapRail" stroke="#262930" stroke-width="1.5"/>
+                  <rect x="92" y="84" width="496" height="202" rx="101" ry="101"
+                        stroke="#262930" stroke-width="1.5"/>
                   <line id="lapTick" stroke="#f1f3f5" stroke-opacity="0.85" stroke-width="1.5"/>
                   <polygon id="lapFlag" fill="#f1f3f5"/>
                   <path id="lapArc" stroke="#ff6200" stroke-width="3.5"
@@ -783,7 +795,7 @@ button{
         <button class="act" id="btnLead"><span id="leadIcon"></span><span id="leadLab">COOL DOWN</span></button>
         <button class="stop" id="btnStop">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"
-               stroke-linecap="round"><path d="M12 3.5v17M4.6 7.75l14.8 8.5M4.6 16.25l14.8-8.5"/></svg>STOP // EMERGENCY</button>
+               stroke-linecap="round"><path d="M12 3.5v17M4.6 7.75l14.8 8.5M4.6 16.25l14.8-8.5"/></svg>STOP</button>
       </div>
     </section>
 
@@ -914,57 +926,78 @@ try {
 })();
 
 /* ---- the oval ------------------------------------------------------------
-   The reference's inner lane: a 496x202 stadium, so 294px straights closed by
-   r=101 semicircles, face-on. Same maths as every other interface — but the
-   reference runs the lap from the finish line at the bottom of the oval, up
-   the right-hand bend and left along the top, which is neither of the two
+   The reference's track has four boundaries — the inner field (r=101), two
+   dashed dividers (r=125, r=149) and the outside edge (r=173), all on the
+   same 294px straights — so three lanes. The walker is drawn on the middle
+   one, along its centre line: r=137, the stadium halfway between the two
+   dividers.
+
+   The reference runs the lap from the finish line at the bottom of the oval,
+   up the right-hand bend and left along the top, which is neither of the two
    directions stride-core offers (clockwise from the top-left, or
    anticlockwise from 7 o'clock). Rather than ask core for a third one for a
-   single caller, the geometry is here. */
-const TRACK = STRIDE.track({straight: 294, radius: 101, cx: 340, cy: 185, squash: 1});
-const LANE = {
-  straight: 294, radius: 101, cx: 340, cy: 185,
-  get perimeter() { return 2 * this.straight + 2 * Math.PI * this.radius; }
-};
-/** Centre-line point for a distance round the lap, in the 680x370 viewBox. */
-function laneAt(metres) {
-  const P = LANE.perimeter;
-  let d = ((metres || 0) % 400) / 400 * P;
-  if (d < 0) d += P;
-  const h = LANE.straight / 2, r = LANE.radius, cx = LANE.cx, cy = LANE.cy;
-  const top = cy - r, bot = cy + r, left = cx - h, right = cx + h;
-  const bend = Math.PI * r;
-  if (d <= h) return {x: cx + d, y: bot};                    // bottom, →
-  if (d <= h + bend) {                                       // right bend, ↑
-    const th = (d - h) / r;                                  // 0 at bottom
-    return {x: right + r * Math.sin(th), y: bot - r * (1 - Math.cos(th))};
+   single caller, the geometry is here — and it is ONE list of segments, from
+   which both the drawn path and the dot's position are taken, so the orange
+   trail and the beacon cannot disagree about where the walker is. An earlier
+   version wrote the two out separately and got the top straight half as long
+   in one as in the other; the dot ran a half-straight ahead of its own trail
+   from the top of the right bend onwards. */
+const TRACK = STRIDE.track({straight: 294, radius: 137, cx: 340, cy: 185, squash: 1});
+const LANE = (() => {
+  const straight = 294, r = 137, cx = 340, cy = 185;
+  const h = straight / 2, top = cy - r, bot = cy + r, left = cx - h, right = cx + h;
+  /* Anticlockwise on screen, from the bottom-centre. `bend` segments carry the
+     centre of their semicircle and the screen angle they start at; y is down,
+     so anticlockwise on screen is a falling angle. */
+  const segs = [
+    {kind: 'line', x0: cx,    y0: bot, x1: right, y1: bot, len: h},
+    {kind: 'bend', cx: right, cy: cy,  a0:  Math.PI / 2,  len: Math.PI * r},
+    {kind: 'line', x0: right, y0: top, x1: left,  y1: top, len: straight},
+    {kind: 'bend', cx: left,  cy: cy,  a0: -Math.PI / 2,  len: Math.PI * r},
+    {kind: 'line', x0: left,  y0: bot, x1: cx,    y1: bot, len: h}
+  ];
+  const perimeter = segs.reduce((t, g) => t + g.len, 0);
+
+  function pointOn(g, u) {                     // u: 0..1 along the segment
+    if (g.kind === 'line') return {x: g.x0 + (g.x1 - g.x0) * u, y: g.y0 + (g.y1 - g.y0) * u};
+    const a = g.a0 - Math.PI * u;
+    return {x: g.cx + r * Math.cos(a), y: g.cy + r * Math.sin(a)};
   }
-  if (d <= 2 * h + bend) return {x: right - (d - h - bend), y: top};  // top, ←
-  const th = (d - 2 * h - bend) / r;                         // left bend, ↓
-  return {x: left - r * Math.sin(th), y: top + r * (1 - Math.cos(th))};
-}
+
+  return {
+    r: r, cx: cx, top: top, bot: bot, perimeter: perimeter,
+    /** SVG `d`, drawn in the same order and from the same numbers as at(). */
+    d: segs.map((g, i) => {
+      const end = pointOn(g, 1);
+      const head = i === 0 ? 'M ' + g.x0 + ' ' + g.y0 + ' ' : '';
+      return head + (g.kind === 'line' ? 'L ' : 'A ' + r + ' ' + r + ' 0 0 0 ') +
+             end.x.toFixed(2) + ' ' + end.y.toFixed(2);
+    }).join(' '),
+    /** Point on the centre line at a fraction (0..1) of one lap. */
+    at: function (f) {
+      let d = ((f % 1) + 1) % 1 * perimeter;
+      for (let i = 0; i < segs.length; i++) {
+        if (d <= segs[i].len || i === segs.length - 1) {
+          return pointOn(segs[i], Math.min(1, d / segs[i].len));
+        }
+        d -= segs[i].len;
+      }
+    }
+  };
+})();
 const SVGNS = 'http://www.w3.org/2000/svg';
 
 (() => {
-  /* The rail: the inner lane's stadium, as a path so the arc and the dot are
-     measured against exactly what is drawn. */
-  const h = LANE.straight / 2, r = LANE.radius;
-  const cx = LANE.cx, cy = LANE.cy, top = cy - r, bot = cy + r;
-  const left = cx - h, right = cx + h;
-  const d = 'M ' + cx + ' ' + bot + ' H ' + right +
-            ' A ' + r + ' ' + r + ' 0 0 0 ' + right + ' ' + top +
-            ' H ' + left +
-            ' A ' + r + ' ' + r + ' 0 0 0 ' + left + ' ' + bot +
-            ' H ' + cx;
-  $('lapRail').setAttribute('d', d);
-  $('lapArc').setAttribute('d', d);
-  /* Start / finish: the line across the oval at distance zero — the bottom of
-     the inner lane, where the reference puts it — with its little flag. */
+  $('lapArc').setAttribute('d', LANE.d);
+  /* Start / finish: the line across the infield at distance zero, carried
+     down across the inner lane to the centre line the walker is on, with its
+     little flag where the lap begins. */
   const t = $('lapTick');
-  t.setAttribute('x1', cx); t.setAttribute('y1', top);
-  t.setAttribute('x2', cx); t.setAttribute('y2', bot);
+  t.setAttribute('x1', LANE.cx); t.setAttribute('y1', 84);
+  t.setAttribute('x2', LANE.cx); t.setAttribute('y2', LANE.bot);
   $('lapFlag').setAttribute('points',
-    (cx - 4) + ',' + bot + ' ' + (cx + 4) + ',' + bot + ' ' + cx + ',' + (bot - 8));
+    (LANE.cx - 4) + ',' + LANE.bot + ' ' + (LANE.cx + 4) + ',' + LANE.bot + ' ' +
+    LANE.cx + ',' + (LANE.bot - 8));
 })();
 
 /* ---- the elevation profile ----------------------------------------------
@@ -1324,6 +1357,7 @@ STRIDE.rpe($('sumRpe'));
 let coachTimer = null;
 function dismissCoach() {
   $('coach').classList.remove('on');
+  fitOval();
   clearTimeout(coachTimer);
   Stride.hushCoach();
 }
@@ -1339,10 +1373,11 @@ window.coach = function (c) {
   if (shownScreen !== 'scLive') return;
   $('coachText').textContent = line;
   $('coach').classList.add('on');
+  fitOval();              // the band takes height from the oval's stage now
   clearTimeout(coachTimer);
   // Long enough to read at a walking pace, and it goes by itself so nobody has
   // to reach for it mid-stride.
-  coachTimer = setTimeout(() => $('coach').classList.remove('on'),
+  coachTimer = setTimeout(() => { $('coach').classList.remove('on'); fitOval(); },
                           Math.min(18000, Math.max(9000, 5000 + line.length * 90)));
 };
 
@@ -1517,20 +1552,32 @@ function renderLaps(s) {
   $('lapNo').textContent = laps + 1;
   $('lapTime').textContent = lapClockShort(s.session.elapsed - lap.at);
 
-  /* The arc is the drawn path with pathLength=1000, and this lane is face-on,
-     so the dash fraction *is* the lap fraction. A dashoffset rather than a
-     dasharray, because the arc must start at the finish line, not at whatever
-     point the path happens to begin drawing at. */
+  /* The arc is LANE.d with pathLength=1000, which starts drawing at the finish
+     line and is measured along the same segments LANE.at() walks, so the dash
+     fraction *is* the lap fraction and the dash ends under the dot. */
   const f = TRACK.lapFraction(d);
   $('lapArc').setAttribute('stroke-dasharray', (f * 1000).toFixed(1) + ' 1000');
   // Under a hair of progress the round cap draws a stub that reads as a switch.
   $('lapArc').style.opacity = f > 0.004 ? 1 : 0;
 
-  const p = laneAt(d);
+  const p = LANE.at(f);
   ['lapHalo', 'lapDot', 'lapDotIn'].forEach(id => {
     $(id).setAttribute('cx', p.x.toFixed(1));
     $(id).setAttribute('cy', p.y.toFixed(1));
   });
+  fitOval();
+}
+
+/* The drawing is 331px tall and the stage is not always: with the coach band
+   docked it is about 300. Shrink the whole oval — lanes, readouts and dot
+   together, so nothing moves relative to anything else — rather than crop it. */
+let ovalScale = 1;
+function fitOval() {
+  const h = $('stage').clientHeight;
+  const k = h > 0 ? Math.min(1, (h - 6) / 331) : 1;
+  if (Math.abs(k - ovalScale) < 0.005) return;
+  ovalScale = k;
+  document.querySelector('.ovalbox').style.transform = k < 1 ? 'scale(' + k.toFixed(3) + ')' : '';
 }
 
 function renderPath(s) {
