@@ -172,9 +172,12 @@ coach and reminders need.
 
 **The walk log is optional.** Settings → Walk log turns it on and asks for a
 URL. When it's on, every qualifying walk is written to the console as two
-files — a CSV of every second and a summary — and both are POSTed to that URL
-when the walk ends. If the listener can't be reached, the files stay on the
-console and are sent at the end of the next walk instead. The receiving end is
+files — a CSV of every second and a summary. The summary is written the moment
+the walk ends; both are POSTed to that URL once the summary screen is left, or
+the console goes to sleep, so the optional 1–10 effort rating asked for on that
+screen is usually in the first send. If the listener can't be reached, the files
+stay on the console and are sent at the end of the next walk instead. The
+receiving end is
 [`homeassistant/stride_walk_listener.py`](homeassistant/stride_walk_listener.py);
 run it on any machine on your network and point the console at it.
 

@@ -341,19 +341,19 @@ button{font-family:inherit;color:inherit;background:none;border:none;text-align:
 
 /* Left half: the numbers, three rows of two rather than two rows of three, so
    the right half is free for the heart. */
-.sum .grid{position:absolute;left:70px;top:246px;width:552px;display:flex;flex-wrap:wrap}
-.sum .grid .cell{width:264px;height:88px;margin:0 24px 16px 0;position:relative;
+.sum .grid{position:absolute;left:70px;top:222px;width:552px;display:flex;flex-wrap:wrap}
+.sum .grid .cell{width:264px;height:76px;margin:0 24px 16px 0;position:relative;
                  background:var(--panel);border:1px solid var(--line);border-radius:10px}
 .sum .grid .cell.last{margin-right:0}
-.sum .grid .kk{position:absolute;left:18px;top:14px;font-size:11px;letter-spacing:.24em;color:var(--dim)}
-.sum .grid .vv{position:absolute;left:18px;top:38px;font-size:36px;font-weight:500}
+.sum .grid .kk{position:absolute;left:18px;top:12px;font-size:11px;letter-spacing:.24em;color:var(--dim)}
+.sum .grid .vv{position:absolute;left:18px;top:32px;font-size:32px;font-weight:500}
 .sum .grid .vv .u{font-size:16px;color:var(--dim)}
 
 /* ---- summary: the heart --------------------------------------------------
    The one thing the six cells could never say. Average and peak need nobody's
    age; the zone bars need one, and say so plainly when it is missing rather
    than drawing five empty rows or inventing a maximum. */
-.sum .heart{position:absolute;left:658px;top:246px;width:552px;height:312px;
+.sum .heart{position:absolute;left:658px;top:222px;width:552px;height:276px;
             background:var(--panel);border:1px solid var(--line);border-radius:10px}
 .sum .heart .kk{position:absolute;left:24px;top:18px;font-size:11px;
                 letter-spacing:.24em;color:var(--dim)}
@@ -370,15 +370,32 @@ button{font-family:inherit;color:inherit;background:none;border:none;text-align:
 .sum .heart .none{position:absolute;left:24px;top:120px;width:504px;
                   font-size:16px;line-height:1.5;color:var(--dim)}
 
+/* ---- summary: how hard it felt ------------------------------------------
+   The 1-10 selector. Markup, selection and the call to the console live in
+   stride-core (STRIDE.rpe); this is the look — the same machined key as the
+   control row, because it is a thing you press. Optional: no rating is a
+   perfectly good answer and DONE does not wait for one. */
+.sum .effort{position:absolute;left:0;top:572px;width:1280px;
+             display:flex;flex-direction:column;align-items:center}
+.sum .rpe-nums{display:flex}
+.sum .rpe-n{width:78px;height:76px;margin:0 6px;touch-action:manipulation;
+            background:var(--panel);border:1px solid var(--line);border-radius:8px;
+            display:flex;align-items:center;justify-content:center;
+            font-size:34px;font-weight:500;color:var(--dim)}
+.sum .rpe-n.on{border-color:var(--accent);background:#0f2126;color:var(--accent)}
+.sum .rpe-word{width:100%;text-align:center;
+               margin-top:12px;height:22px;font-size:13px;letter-spacing:.24em;
+               text-transform:uppercase;color:var(--accent)}
+
 /* ---- summary: what this walk beat ---------------------------------------- */
-.sum .badges{position:absolute;left:70px;top:576px;width:1140px;
+.sum .badges{position:absolute;left:70px;top:508px;width:1140px;
              display:flex;justify-content:center;gap:16px;height:56px}
 .sum .badge{display:flex;align-items:center;gap:10px;padding:0 22px;height:52px;
             background:#1a2a24;border:1px solid #2f6b52;border-radius:26px;
             font-size:17px;color:#8fd6c8}
 .sum .badge b{font-weight:400;color:var(--warn);font-size:19px}
 
-.sum .done{position:absolute;left:490px;top:664px;width:300px;height:96px;
+.sum .done{position:absolute;left:490px;top:694px;width:300px;height:96px;
            background:#173238;border:1px solid var(--accent);border-radius:8px}
 .sum .done.down{background:#0f2126}
 .sum .done .lab{position:absolute;left:0;top:38px;width:100%;text-align:center;
@@ -588,6 +605,9 @@ button{font-family:inherit;color:inherit;background:none;border:none;text-align:
     <div class="zones" id="sumZones"></div>
     <div class="none" id="sumZonesNone"></div>
   </div>
+
+  <!-- Optional, and it holds nothing up: DONE works without a number. -->
+  <div class="effort"><div class="rpe" id="sumRpe"></div></div>
 
   <div class="badges" id="sumBadges"></div>
   <button class="done" id="btnDone"><span class="lab">DONE</span></button>
@@ -832,6 +852,9 @@ tap($('btnStop'), () => {
 tap($('btnResume'), () => { $('paused').classList.remove('on'); Stride.resume(); });
 tap($('btnEnd'),    () => { $('paused').classList.remove('on'); Stride.end(); });
 tap($('btnDone'),   () => Stride.home());
+/* The 1-10 effort selector. Built once; the look is the CSS above and the
+   behaviour is stride-core's. */
+STRIDE.rpe($('sumRpe'));
 tap($('btnFan'),    () => Stride.fan());
 
 STRIDE.stepper($('btnSpeedUp'),     d => Stride.speed(d),    0.1, 0.5);
@@ -903,7 +926,11 @@ setInterval(() => {
 function showScreen(id){
   if (id === shownScreen) return;
   ['scSetup','scLive','scSummary'].forEach(s => $(s).classList.toggle('on', s === id));
-  if (id === 'scSetup'){ flow.reset(); STRIDE.resetDerived(); }
+  if (id === 'scSetup'){
+    flow.reset(); STRIDE.resetDerived();
+    /* A rating belongs to the walk it was given for. */
+    STRIDE.rpeReset();
+  }
   if (id !== 'scSetup') STRIDE_SETTINGS.close();
   if (id !== 'scLive'){ $('paused').classList.remove('on'); $('coach').classList.remove('show'); }
   lastTouch = performance.now();
@@ -1096,6 +1123,9 @@ function renderSummary(s){
   $('sumClimb').textContent = Math.round(s.session.climb);
   renderHeartPanel(s);
   renderBadges(s);
+  /* The console's copy of the rating. 0 means "not given" and is ignored —
+     see STRIDE.rpeSync. */
+  STRIDE.rpeSync(s.rpe);
 }
 
 /**

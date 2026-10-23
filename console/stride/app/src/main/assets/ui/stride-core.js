@@ -608,6 +608,10 @@ function adapt(raw) {
        when the summary appears rather than arriving after it. */
     summaryLine: raw.summaryLine || '',
 
+    /* How hard the walk felt, 1-10, or 0 for "not given" — the console's own
+       copy of what was tapped on the summary. See rpeSync. */
+    rpe: raw.rpe || 0,
+
     session:  { elapsed: raw.elapsed || 0,
                 distance: distance,
                 calories: raw.calories || 0,
@@ -1254,6 +1258,121 @@ function fanName(n) { return FAN_NAMES[n] || 'OFF'; }
 function fanLabel(n) { return n ? n + ' OF 4' : 'OFF'; }
 
 /* ===========================================================================
+   5b. HOW HARD IT FELT
+   ---------------------------------------------------------------------------
+   One question on the summary screen, asked of the walk that just ended: a
+   1-10 rating of perceived effort. Ten numbers, big enough to hit standing on
+   the belt, and the word for the one selected underneath them.
+
+   **Optional, and recorded only.** DONE works without a rating and an unrated
+   walk is stored as absent rather than 0 — see History.Walk.rpe. Nothing here
+   reaches the coach, an achievement or Home Assistant.
+
+   **Built here rather than in five documents.** The five interfaces are
+   deliberately different to look at, but this is one control with one
+   behaviour, and five copies of the tap wiring is five places for it to drift.
+   Each theme styles `.rpe`, `.rpe-nums`, `.rpe-n` and `.rpe-word`; this file
+   owns the markup, the selection and the call to the console.
+
+   The selection lives here rather than in the drawing, which is what lets it
+   survive a redraw: the summary is re-rendered at 5 Hz like every other
+   screen, and a control rebuilt from the frame would lose the number under
+   the finger. The console's own copy is only adopted when it has one, so a
+   frame that was in flight when the number was tapped cannot wipe it out.
+   =========================================================================== */
+
+/* The word under a number. The anchors Ivan suggested are 1 easy, 3 moderate,
+   5 hard, 7 very hard, 10 all-out; the numbers between them take the nearer
+   word rather than inventing five more distinctions nobody can feel. */
+var RPE_ANCHORS = [null, 'easy', 'easy', 'moderate', 'moderate', 'hard',
+                   'hard', 'very hard', 'very hard', 'very hard', 'all-out'];
+
+/** What the line under the numbers says before anything is tapped. */
+var RPE_PROMPT = 'how hard was that?';
+
+/** The current selection, 0 for none. */
+var rpeValue = 0;
+
+/** Every selector on this page. There is one, but the painting is generic. */
+var rpeHosts = [];
+
+function rpeWord(n) { return RPE_ANCHORS[n] || ''; }
+
+/** Redraw the selection on every mounted selector. */
+function rpePaint() {
+  for (var h = 0; h < rpeHosts.length; h++) {
+    var host = rpeHosts[h];
+    var nums = host.querySelectorAll('.rpe-n');
+    for (var i = 0; i < nums.length; i++) {
+      var n = parseInt(nums[i].getAttribute('data-n'), 10);
+      nums[i].classList.toggle('on', n === rpeValue);
+    }
+    var w = host.querySelector('.rpe-word');
+    if (w) w.textContent = rpeValue ? rpeWord(rpeValue) : RPE_PROMPT;
+  }
+}
+
+function rpePick(n) {
+  n = parseInt(n, 10);
+  if (!(n >= 1 && n <= 10)) return;
+  rpeValue = n;
+  rpePaint();
+  try { global.Stride.setRpe(n); } catch (e) {}
+}
+
+/** Clear the selection for a walk that has not been rated yet. */
+function rpeReset() {
+  if (rpeValue === 0) return;
+  rpeValue = 0;
+  rpePaint();
+}
+
+/**
+ * Do the console's number and this page's agree?
+ *
+ * Called on every summary frame. The console's 0 means "not given", which is
+ * also what a frame that left before the tap says — so a zero is ignored and
+ * only a real rating is adopted. That keeps a tap from being undone by an
+ * older frame without the console ever having to be the one that remembers it.
+ */
+function rpeSync(v) {
+  v = v | 0;
+  if (v < 1 || v > 10) return;
+  if (v === rpeValue) return;
+  rpeValue = v;
+  rpePaint();
+}
+
+/**
+ * Build the selector inside `host`, once, and wire its taps.
+ *
+ * @param host an empty element in the summary's markup. The theme's CSS does
+ *             the rest.
+ */
+function rpe(host) {
+  if (!host) return host;
+  if (host.getAttribute('data-rpe') === '1') return host;
+  host.setAttribute('data-rpe', '1');
+  var row = document.createElement('div');
+  row.className = 'rpe-nums';
+  for (var n = 1; n <= 10; n++) {
+    var b = document.createElement('div');
+    b.className = 'rpe-n';
+    b.setAttribute('data-n', String(n));
+    b.textContent = String(n);
+    tap(b, (function (v) { return function () { rpePick(v); }; })(n));
+    row.appendChild(b);
+  }
+  var word = document.createElement('div');
+  word.className = 'rpe-word';
+  host.appendChild(row);
+  host.appendChild(word);
+  rpeHosts.push(host);
+  rpePaint();
+  return host;
+}
+
+/* ===========================================================================
    6. THE BRIDGE
    ---------------------------------------------------------------------------
    `Stride` is the @JavascriptInterface object MainActivity injects. Stubbing
@@ -1262,7 +1381,7 @@ function fanLabel(n) { return n ? n + ' OF 4' : 'OFF'; }
    =========================================================================== */
 
 var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
-              'setSpeed',
+              'setSpeed', 'setRpe',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
               'setWalker', 'ackDmk', 'hushCoach', 'dim', 'setUi', 'wakeBoard'];
 
@@ -1693,6 +1812,12 @@ global.STRIDE = {
   ZONES: ZONES,
   zoneRows: zoneRows,
   beatStyle: beatStyle,
+
+  rpe: rpe,
+  rpeWord: rpeWord,
+  rpeSync: rpeSync,
+  rpeReset: rpeReset,
+  RPE_ANCHORS: RPE_ANCHORS,
 
   stub: stub,
   demo: demo,

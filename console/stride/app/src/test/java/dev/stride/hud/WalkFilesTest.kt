@@ -3,6 +3,7 @@ package dev.stride.hud
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -306,6 +307,39 @@ class WalkFilesTest {
         for (field in expected) {
             assertTrue("the summary is missing $field", names.contains(field))
         }
+    }
+
+    // --- how hard it felt ----------------------------------------------------
+
+    @Test
+    fun `an unrated walk leaves the effort out rather than writing a zero`() {
+        // Optional means absent, not nought. A zero stored here would read as
+        // a genuine bottom-of-the-scale rating to every later reader, and the
+        // scale starts at 1 — see History.Walk.rpe.
+        val json = walk(distance = 2000.0, elapsed = 1200.0).json()
+        assertFalse("an unrated walk wrote an rpe field: $json", json.has("rpe"))
+    }
+
+    @Test
+    fun `a rating is one integer between one and ten`() {
+        val walk = walk(distance = 2000.0, elapsed = 1200.0).copy(rpe = 7)
+        val json = walk.json()
+        assertEquals(7, json.getInt("rpe"))
+        // And it comes back off the file as the same number, which is what
+        // history.json does on the next boot.
+        assertEquals(7, History.Walk.from(json).rpe)
+    }
+
+    @Test
+    fun `a rating out of range reads back as not given`() {
+        // Nothing writes 0 or 11, and if anything ever does, it must not come
+        // back as a rating — least of all 0, which is not on the scale.
+        val zero = JSONObject().put("rpe", 0)
+        val eleven = JSONObject().put("rpe", 11)
+        val given = JSONObject().put("rpe", JSONObject.NULL)
+        assertNull(History.Walk.from(zero).rpe)
+        assertNull(History.Walk.from(eleven).rpe)
+        assertNull(History.Walk.from(given).rpe)
     }
 
     // --- which walks are recorded --------------------------------------------

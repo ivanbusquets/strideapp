@@ -166,6 +166,15 @@ data class Snapshot(
     val planPeakIncline: Double = 0.0,
     /** The coach's closing line, ready before the summary appears. */
     val summaryLine: String = "",
+    /**
+     * How hard the person said the walk felt, 1-10, or **0 for "not given"**.
+     *
+     * The one place a zero is the right encoding: this is a live frame rather
+     * than a record, the screen has to draw "nothing selected" from it, and
+     * there is no 0 in the scale for it to be confused with. The stored form is
+     * null and stays null — see [History.Walk.rpe].
+     */
+    val rpe: Int = 0,
     /** Plan time wrapped into the current lap. Equals elapsed unless looping. */
     val planElapsed: Double = 0.0,
     /** Which lap of an open-ended circuit; 1 for an ordinary walk. */
@@ -294,6 +303,7 @@ data class Snapshot(
         append("\"planClimbM\":${"%.0f".format(planClimbM)},")
         append("\"planPeakIncline\":${"%.1f".format(planPeakIncline)},")
         append("\"summaryLine\":\"${esc(summaryLine)}\",")
+        append("\"rpe\":$rpe,")
         append("\"planElapsed\":${"%.0f".format(planElapsed)},")
         append("\"planLap\":$planLap,")
         append("\"planLoops\":$planLoops,")

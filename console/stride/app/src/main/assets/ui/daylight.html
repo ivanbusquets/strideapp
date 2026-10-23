@@ -299,13 +299,28 @@ button{font-family:inherit;color:inherit;background:none;border:none;text-align:
    the Original escaped it because its summary is an ordinary flex column. */
 .sum .sumcoach{position:absolute;left:44px;top:236px;width:1000px;height:58px;
                overflow:hidden;font-size:20px;line-height:1.45;color:#3f6b52}
-.sum svg{position:absolute;left:44px;top:300px;width:1192px;height:150px}
-.sum .rule{top:474px}
-.sum .grid{position:absolute;left:44px;top:496px;width:1192px;display:flex}
+.sum svg{position:absolute;left:44px;top:300px;width:1192px;height:110px}
+.sum .rule{top:434px}
+.sum .grid{position:absolute;left:44px;top:456px;width:1192px;display:flex}
 .sum .grid .cell{flex:1}
 .sum .grid .kk{font-size:12px;letter-spacing:.24em;color:var(--dim)}
 .sum .grid .vv{font-size:58px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
-.sum .foot{position:absolute;left:44px;top:660px;width:1192px;display:flex}
+/* How hard it felt — the 1-10 selector, in the band between the figures and
+   the way out. Markup, selection and the call to the console are stride-core's
+   (STRIDE.rpe); this is the look: paper, ink borders, a heavier figure in the
+   one picked out. Optional, so the line under it invites rather than asks. */
+.sum .effort{position:absolute;left:44px;top:570px;width:1192px;
+             display:flex;flex-direction:column;align-items:center}
+.sum .rpe-nums{display:flex}
+.sum .rpe-n{width:104px;height:64px;margin:0 8px;touch-action:manipulation;
+            background:var(--card);border:2px solid var(--ink);border-radius:4px;
+            display:flex;align-items:center;justify-content:center;
+            font-size:32px;font-weight:600;color:var(--dim)}
+.sum .rpe-n.on{background:var(--accent);border-color:var(--accent);color:#f6f3ea}
+.sum .rpe-word{width:100%;text-align:center;
+               margin-top:8px;height:22px;font-size:14px;font-weight:600;
+               letter-spacing:.24em;text-transform:uppercase;color:var(--accent)}
+.sum .foot{position:absolute;left:44px;top:672px;width:1192px;display:flex}
 .sum .foot .card{width:360px;height:100px;flex:none}
 .sum .foot .lab{position:absolute;left:0;top:36px;width:100%;text-align:center;
                 font-size:20px;font-weight:600;letter-spacing:.2em}
@@ -478,6 +493,9 @@ button{font-family:inherit;color:inherit;background:none;border:none;text-align:
     <div class="cell"><div class="kk">AVG KM/H</div><div class="vv" id="sumAvg">0.0</div></div>
     <div class="cell"><div class="kk">CLIMBED</div><div class="vv" id="sumClimb">0</div></div>
   </div>
+  <!-- Optional: DONE works without a number, and an unrated walk is stored
+       as absent rather than as a zero. -->
+  <div class="effort"><div class="rpe" id="sumRpe"></div></div>
   <div class="foot">
     <button class="card pick" id="btnDone"><span class="lab">DONE</span></button>
     <div class="note" id="sumNote"></div>
@@ -718,6 +736,8 @@ tap($('btnStop'), () => {
 tap($('btnResume'), () => { $('paused').classList.remove('on'); Stride.resume(); });
 tap($('btnEnd'),    () => { $('paused').classList.remove('on'); Stride.end(); });
 tap($('btnDone'),   () => Stride.home());
+/* The 1-10 effort selector: built once here, styled above, run by stride-core. */
+STRIDE.rpe($('sumRpe'));
 tap($('btnFan'),    () => Stride.fan());
 
 STRIDE.stepper($('btnSpeedUp'),     d => Stride.speed(d),    0.1, 0.5);
@@ -789,7 +809,11 @@ setInterval(() => {
 function showScreen(id){
   if (id === shownScreen) return;
   ['scSetup','scLive','scSummary'].forEach(s => $(s).classList.toggle('on', s === id));
-  if (id === 'scSetup'){ flow.reset(); STRIDE.resetDerived(); }
+  if (id === 'scSetup'){
+    flow.reset(); STRIDE.resetDerived();
+    /* A rating belongs to the walk it was given for. */
+    STRIDE.rpeReset();
+  }
   if (id !== 'scSetup') STRIDE_SETTINGS.close();
   if (id !== 'scLive'){ $('paused').classList.remove('on'); $('coach').classList.remove('show'); }
   lastTouch = performance.now();
@@ -937,6 +961,8 @@ function renderSummary(s){
   $('sumAvg').textContent   = s.session.avgSpeed.toFixed(1);
   $('sumClimb').textContent = Math.round(s.session.climb);
   $('sumNote').textContent  = s.session.climb > 60 ? 'A real hill’s worth of climbing.' : '';
+  /* The console's copy of the rating. 0 means "not given" — see rpeSync. */
+  STRIDE.rpeSync(s.rpe);
 }
 
 /* ---- clock ---------------------------------------------------------------- */

@@ -662,6 +662,17 @@ class MainActivity : Activity() {
     @Volatile private var summaryUrl = ""
     @Volatile private var summarySpoken = false
 
+    /**
+     * The walk the summary screen is about, and how hard the person said it
+     * felt: 1-10, or null for "not given".
+     *
+     * The walk is the recorded one, kept so a rating can be put on it after it
+     * already exists — see [History.rate]. Null means there is no summary on
+     * screen to rate, which is every screen but one.
+     */
+    @Volatile private var summaryWalk: History.Walk? = null
+    @Volatile private var summaryRpe: Int? = null
+
     /** Last speed the *board* reported, as opposed to what we asked for. */
     @Volatile private var lastActualKph = 0.0
     /** The grade the board last reported, for enforceLevel. */
@@ -1232,11 +1243,19 @@ class MainActivity : Activity() {
          * this is the cheap second attempt at the moment the screen changes.
          */
         @JavascriptInterface fun home() {
+            // **Leaving the summary is what sends the walk.** The file has been
+            // on the console since the belt stopped; this is the moment it is
+            // closed with whatever rating was tapped and sent once. Do it before
+            // the session moves on, so the walk that is being let go is still
+            // the one on screen.
+            walkLog.finishSummary()
             session = Session.WELCOME
             workout = "none"
             summaryLine = ""
             summaryUrl = ""
             summarySpoken = false
+            summaryWalk = null
+            summaryRpe = null
             clearPlan()
             resetSession()
             // Leaving the summary ends any easing still in flight. The console
@@ -1446,6 +1465,34 @@ class MainActivity : Activity() {
             Thread({ walkLog.flush() }, "walk-log-send").start()
         }
 
+        /**
+         * "How hard was that?" — the number tapped on the summary screen.
+         *
+         * **Recording only.** Nothing here reaches the coach, an achievement or
+         * Home Assistant: the rating is written on the walk record so the file
+         * the console keeps can carry it, and that is the whole of it.
+         *
+         * 1-10 is a rating and anything else is "not given". The rating being
+         * deliberate: DONE works without one, and an unrated walk stays null
+         * rather than being stored as a zero that would later read as a 1 — see
+         * [History.Walk.rpe].
+         *
+         * Ignored outside the summary: the number comes off the screen that was
+         * up when it was tapped, and there is no other screen it belongs to.
+         */
+        @JavascriptInterface fun setRpe(rpe: Int) {
+            if (session != Session.SUMMARY) return
+            val walk = summaryWalk ?: return
+            val rating = rpe.takeIf { it in 1..10 }
+            summaryRpe = rating
+            summaryWalk = history.rate(walk, rating)
+            // Held, not written: the summary file is rewritten once, when the
+            // screen is left — see WalkLog.rate.
+            walkLog.rate(rating)
+            Log.i(TAG, "summary: effort " +
+                    if (rating != null) "$rating/10" else "not given")
+        }
+
         @JavascriptInterface fun addPerson(name: String): String {
             cfg.addPerson(name)?.let { Log.i(TAG, "settings: added ${it.name} (${it.id})") }
             return cfg.json().toString()
@@ -1594,6 +1641,13 @@ class MainActivity : Activity() {
 
         /** Screen sleep. The panel is the only light in the room at 6am. */
         @JavascriptInterface fun dim(on: Boolean) {
+            // **The console going to sleep is the other way off the summary.**
+            // Every UI's idle timer calls this as it puts the panel to bed, and
+            // somebody walking away from a summary is exactly the case that must
+            // not hold the walk until morning: this closes the summary file with
+            // whatever was tapped and sends the pair. A sleep from any other
+            // screen finds nothing pending and does nothing at all.
+            if (on) walkLog.finishSummary()
             runOnUiThread {
                 window.attributes = window.attributes.apply {
                     screenBrightness = if (on) 0.02f else
@@ -2132,9 +2186,16 @@ class MainActivity : Activity() {
             plan = planName,
         )
         earned = history.record(walk, hasProfile())
-        // The same walk, written out as a file and sent. The summary file is
-        // the same twelve fields as the entry above, so the two cannot
-        // disagree — see WalkLog.
+        // What the summary screen is about, and a rating to start from: nobody
+        // has been asked yet on a fresh summary, so it is absent — see
+        // History.Walk.rpe.
+        summaryWalk = walk
+        summaryRpe = null
+        // The same walk, written out as a file. The summary file is the same
+        // fields as the entry above, so the two cannot disagree, and it goes
+        // down **now** — a console switched off at the wall with the summary
+        // on screen must still leave one behind. The send waits for the screen
+        // to be left; see WalkLog.endWalk and finishSummary.
         walkLog.endWalk(walk, hasProfile())
         if (earned.isNotEmpty()) Log.i(TAG, "achievements: ${earned.joinToString("; ")}")
         if (stopping) return          // the wind-down parks the machine after it
@@ -3169,6 +3230,9 @@ class MainActivity : Activity() {
             planClimbM = route?.climbM ?: 0.0,
             planPeakIncline = planSteps.maxOfOrNull { it.incline } ?: 0.0,
             summaryLine = summaryLine,
+            // 0 for "not given" — the screen has to draw nothing selected, and
+            // 0 is not in the 1-10 scale. Only the summary keeps one.
+            rpe = if (session == Session.SUMMARY) summaryRpe ?: 0 else 0,
             planElapsed = planElapsed,
             planLap = planLap,
             planLoops = planLoops,
@@ -3449,6 +3513,10 @@ class MainActivity : Activity() {
             // cannot show a segment number from the walk before this one.
             segment = if (steps.isEmpty() || stepIndex < 0) 0 else stepIndex + 1,
             summaryLine = summaryLine,
+            // A rating tapped a moment ago must survive a repaint as well as a
+            // poll — the base frame is the last *poll*'s, and that may be a
+            // fifth of a second older than the tap.
+            rpe = if (session == Session.SUMMARY) summaryRpe ?: 0 else 0,
             targetSpeed = targetKph,
             targetIncline = targetGrade,
             elapsed = elapsedSec(),

@@ -360,9 +360,24 @@ button{font-family:inherit;color:inherit;background:none;border:none;
 .sum .grid .kk{font-size:13px;letter-spacing:.22em;color:var(--dim)}
 .sum .grid .vv{font-size:52px;font-weight:200;margin-top:12px;font-variant-numeric:tabular-nums}
 .sum .grid .vv .u{font-size:22px;color:var(--dim);margin-left:3px}
-.sum .note{position:absolute;left:0;top:566px;width:1280px;text-align:center;
+.sum .note{position:absolute;left:0;top:528px;width:1280px;text-align:center;
            font-size:19px;color:var(--dim)}
-.sum .done{position:absolute;left:490px;top:640px;width:300px;height:104px;
+/* How hard it felt — the 1-10 selector. Markup, selection and the call to the
+   console are stride-core's (STRIDE.rpe); this is the look. A hairline box and
+   one amber light, like everything else here. Optional, so the word under it
+   is an invitation and not an error message. */
+.sum .effort{position:absolute;left:0;top:560px;width:1280px;
+             display:flex;flex-direction:column;align-items:center}
+.sum .rpe-nums{display:flex}
+.sum .rpe-n{width:78px;height:76px;margin:0 6px;touch-action:manipulation;
+            background:var(--panel);border:1px solid var(--line);border-radius:3px;
+            display:flex;align-items:center;justify-content:center;
+            font-size:34px;font-weight:200;color:var(--dim)}
+.sum .rpe-n.on{border-color:#e0a458;color:#f4efe6;background:#1a1510}
+.sum .rpe-word{width:100%;text-align:center;
+               margin-top:12px;height:22px;font-size:15px;letter-spacing:.22em;
+               text-transform:uppercase;color:#e0a458}
+.sum .done{position:absolute;left:490px;top:676px;width:300px;height:104px;
            border:1px solid var(--accent);border-radius:52px;background:#1a1510}
 .sum .done.down{background:#241c14}
 .sum .done .lab{position:absolute;left:0;top:38px;width:100%;text-align:center;
@@ -561,6 +576,8 @@ button{font-family:inherit;color:inherit;background:none;border:none;
     <div class="cell"><div class="kk">CLIMBED</div><div class="vv"><span id="sumClimb">0</span><span class="u">m</span></div></div>
   </div>
   <div class="note" id="sumNote"></div>
+  <!-- Optional: no number is a fine answer and DONE does not wait for one. -->
+  <div class="effort"><div class="rpe" id="sumRpe"></div></div>
   <button class="done" id="btnDone"><span class="lab">DONE</span></button>
 </div>
 
@@ -846,6 +863,8 @@ tap($('btnStop'), () => {
 tap($('btnResume'), () => { $('paused').classList.remove('on'); Stride.resume(); });
 tap($('btnEnd'),    () => { $('paused').classList.remove('on'); Stride.end(); });
 tap($('btnDone'),   () => Stride.home());
+/* The 1-10 effort selector: built once here, styled above, run by stride-core. */
+STRIDE.rpe($('sumRpe'));
 tap($('btnFan'),    () => Stride.fan());
 
 STRIDE.stepper($('btnSpeedUp'),     d => Stride.speed(d),    0.1, 0.5);
@@ -932,6 +951,8 @@ function showScreen(id){
   if (id === 'scSetup'){
     flow.reset();
     STRIDE.resetDerived();
+    /* A rating belongs to the walk it was given for. */
+    STRIDE.rpeReset();
   }
   if (id !== 'scSetup') STRIDE_SETTINGS.close();
   if (id !== 'scLive'){
@@ -1122,6 +1143,8 @@ function renderSummary(s){
   $('sumClimb').textContent = Math.round(s.session.climb);
   $('sumNote').textContent  = s.session.climb > 60
     ? 'That is a real hill’s worth of climbing.' : '';
+  /* The console's copy of the rating. 0 means "not given" — see rpeSync. */
+  STRIDE.rpeSync(s.rpe);
 }
 
 /* ---- clock ---------------------------------------------------------------- */

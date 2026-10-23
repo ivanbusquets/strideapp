@@ -60,6 +60,16 @@ class History(context: Context) {
         val avgPulse: Int,
         val maxPulse: Int,
         val plan: String,
+        /**
+         * How hard the walk felt, 1-10, or **null when nobody said**.
+         *
+         * **Null is a value here and 0 is not.** The rating is optional, and a
+         * walk nobody rated has to stay distinguishable from a walk rated at
+         * the bottom of the scale — see `json()`, which leaves the field out
+         * entirely rather than writing a zero that every later reader would
+         * have to know to discount.
+         */
+        val rpe: Int? = null,
     ) {
         fun json(): JSONObject = JSONObject()
             .put("who", who)
@@ -74,6 +84,9 @@ class History(context: Context) {
             .put("avgPulse", avgPulse)
             .put("maxPulse", maxPulse)
             .put("plan", plan)
+            // Left out rather than written as 0: an unrated walk is absent,
+            // and a reader that sees nothing knows not to treat it as a 1.
+            .apply { rpe?.let { put("rpe", it) } }
 
         companion object {
             private fun round1(v: Double) = Math.round(v * 10.0) / 10.0
@@ -91,6 +104,11 @@ class History(context: Context) {
                 avgPulse = o.optInt("avgPulse", 0),
                 maxPulse = o.optInt("maxPulse", 0),
                 plan = o.optString("plan"),
+                // Absent, null, or out of range is "not rated" — never 0,
+                // and never something that would read as a genuine 1.
+                rpe = if (o.has("rpe") && !o.isNull("rpe")) {
+                    o.optInt("rpe").takeIf { it in 1..10 }
+                } else null,
             )
         }
     }
@@ -233,6 +251,36 @@ class History(context: Context) {
         cal.set(java.util.Calendar.SECOND, 0)
         cal.set(java.util.Calendar.MILLISECOND, 0)
         return cal.timeInMillis / 86_400_000L
+    }
+
+    /**
+     * Put a rating on a walk that is already recorded, and return the walk as
+     * it now stands.
+     *
+     * The rating is given *after* the walk was stored — the summary screen is
+     * where it is asked for, and the walk was recorded the moment the belt
+     * stopped so the summary could show what it beat. So this finds the entry
+     * again by its own contents rather than by a new id: there is exactly one
+     * walk with this person, this start time and this length, and it is the one
+     * on screen.
+     *
+     * A walk that was never recorded — a guest's, or one too short — is not in
+     * the list, and comes straight back with the rating on it. Nothing is
+     * stored, which is the same rule that kept it out in the first place.
+     *
+     * @param rpe 1-10, or null to clear. **Null, not 0** — see [Walk.rpe].
+     */
+    @Synchronized
+    fun rate(walk: Walk, rpe: Int?): Walk {
+        val rating = rpe?.takeIf { it in 1..10 }
+        val updated = walk.copy(rpe = rating)
+        val i = walks.indexOfFirst { it == walk }
+        if (i < 0) return updated
+        walks = walks.toMutableList().also { it[i] = updated }
+        save()
+        Log.i(TAG, "rated the walk for ${walk.who} " +
+                if (rating != null) "$rating/10" else "— cleared")
+        return updated
     }
 
     /** The most recent walks for one person, newest first. */

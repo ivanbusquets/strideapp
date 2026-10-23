@@ -289,7 +289,26 @@ button.pulse{animation:pulse .9s ease-out 2}
 .card .k{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint)}
 .card .v{margin-top:12px;font-size:40px;font-weight:300;font-variant-numeric:tabular-nums}
 .card .v small{font-size:15px;color:var(--ink-dim);margin-left:3px}
-.summary .done{margin-top:52px}
+/* How hard it felt — the 1-10 selector, under the cards and above DONE.
+   The markup, the selection and the call to the console are in stride-core
+   (STRIDE.rpe); this is the look. Optional: leaving without a rating is the
+   ordinary way out, so nothing here should read as a form to fill in. */
+.summary .effort{margin-top:32px;display:flex;flex-direction:column;align-items:center}
+.summary .rpe-nums{display:flex}
+.summary .rpe-n{
+  width:84px;height:74px;margin:0 5px;touch-action:manipulation;
+  background:rgba(22,37,90,.4);border:2px solid var(--track-line);border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:32px;font-weight:300;color:var(--ink-dim);
+  transition:border-color .12s,color .12s,background .12s;
+}
+.summary .rpe-n.on{border-color:var(--accent);background:rgba(57,224,255,.16);color:var(--ink)}
+.summary .rpe-word{
+  width:100%;text-align:center;
+  margin-top:14px;height:24px;font-size:16px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--accent);
+}
+.summary .done{margin-top:36px}
 .summary .done button{width:280px;max-width:none;height:88px;font-size:19px}
 
 /* ---- coach ribbon -------------------------------------------------------
@@ -748,6 +767,8 @@ button.pulse{animation:pulse .9s ease-out 2}
       <div class="card"><div class="k">Max speed</div><div class="v"><span id="sumMax">0.0</span><small>km/h</small></div></div>
       <div class="card"><div class="k">Avg incline</div><div class="v"><span id="sumInc">0.0</span><small>%</small></div></div>
     </div>
+    <!-- Optional, and it does not hold DONE hostage: no rating is a rating. -->
+    <div class="effort"><div class="rpe" id="sumRpe"></div></div>
     <div class="done"><button class="primary" id="btnDone">DONE</button></div>
   </div>
 </div>
@@ -1166,6 +1187,9 @@ tap($('btnStop'),  () => {
 tap($('btnResume'), () => { $('confirm').classList.remove('show'); Stride.resume(); });
 tap($('btnEnd'),    () => { $('confirm').classList.remove('show'); Stride.end(); });
 tap($('btnDone'),   () => Stride.home());
+/* The 1-10 effort selector. Built once, here; the look is in the CSS above and
+   the behaviour in stride-core. */
+STRIDE.rpe($('sumRpe'));
 // The board only pulses mode 8 on removal, so we can't sense the key coming
 // back — you tell us. If it is still out, the next poll raises this again.
 tap($('btnDmkOk'),  () => Stride.ackDmk());
@@ -1262,7 +1286,12 @@ function showScreen(mode){
   if (mode !== 'welcome') STRIDE_SETTINGS.close();
   // Back to the first question whenever we land on the welcome screen, so a
   // finished walk never leaves a half-made choice sitting there.
-  if (mode === 'welcome') { showStep(1); sawLaps = -1; }
+  if (mode === 'welcome') {
+    showStep(1); sawLaps = -1;
+    /* A rating belongs to the walk it was given for. The next summary starts
+       with nothing selected rather than with the last walk's number. */
+    STRIDE.rpeReset();
+  }
   /* Changing screen counts as activity. Without this, finishing a workout drops
      straight onto the summary with half an hour of "idle" already banked — the
      panel dimmed to sleep the instant the first walk ended, before it could be
@@ -1931,6 +1960,9 @@ function renderSummary(s){
   $('sumAvg').textContent  = ((s.avgSpeed != null ? s.avgSpeed : 0)).toFixed(1);
   $('sumMax').textContent  = ((s.maxSpeed != null ? s.maxSpeed : 0)).toFixed(1);
   $('sumInc').textContent  = ((s.avgIncline != null ? s.avgIncline : 0)).toFixed(1);
+  /* The console's copy of the rating, so a redraw and this page agree. A zero
+     means "not given" and is left alone — see STRIDE.rpeSync. */
+  STRIDE.rpeSync(s.rpe);
 }
 
 /* --- clock --------------------------------------------------------------- */
