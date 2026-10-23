@@ -940,9 +940,12 @@
 
   // --- interface ---
   function paneUi(pane) {
+    /* No count in this line. It said "Five ways to walk" and the list is now
+       six, and a sentence that has to be edited every time an interface is
+       added is a sentence that eventually lies. */
     var sc = head(pane, 'Interface',
-      'Five ways to walk. The treadmill behaves identically in all of them — these ' +
-      'change what the screen is made of, not just its colours.');
+      'Every way to walk this console has. The treadmill behaves identically in ' +
+      'all of them — these change what the screen is made of, not just its colours.');
     var wrap = el('div', 'sx-uis');
     sc.appendChild(wrap);
 

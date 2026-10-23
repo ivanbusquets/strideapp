@@ -1038,7 +1038,36 @@ var UI_META = [
       '<rect x="10" y="44" width="86" height="26" rx="13" fill="#c6f24e"/>' +
       '<g fill="#2b2340"><rect x="10" y="78" width="34" height="16" rx="8"/><rect x="48" y="78" width="30" height="16" rx="8"/>' +
       '<rect x="82" y="78" width="30" height="16" rx="8"/></g>' +
-      '<rect x="116" y="78" width="34" height="16" rx="8" fill="#ff4d3d"/>' }
+      '<rect x="116" y="78" width="34" height="16" rx="8" fill="#ff4d3d"/>' },
+
+  /* The instrument panel: a header bus, two side panels carrying one huge
+     figure each, an oval in the middle and a command deck under it. The
+     sketch shows the *matrix*, because that is the thing that distinguishes
+     this one from four interfaces built around a single hero. */
+  { id: 'super', name: 'Super', blurb: 'Instrument panel. Stepped keys, mono figures, one red STOP.',
+    sketch:
+      '<rect width="160" height="100" fill="#111215"/>' +
+      '<rect x="0" y="0" width="160" height="10" fill="#16171b"/>' +
+      '<rect x="0" y="90" width="160" height="10" fill="#16171b"/>' +
+      '<rect x="0" y="9" width="160" height="1" fill="#262930"/>' +
+      '<rect x="0" y="90" width="160" height="1" fill="#262930"/>' +
+      '<rect x="42" y="10" width="1" height="80" fill="#262930"/>' +
+      '<rect x="117" y="10" width="1" height="80" fill="#262930"/>' +
+      '<text x="6" y="37" font-family="monospace" font-size="14" font-weight="700" fill="#f1f3f5">6.5</text>' +
+      '<rect x="6" y="44" width="26" height="2" fill="#f59e0b"/>' +
+      '<rect x="6" y="52" width="30" height="12" rx="3" fill="#22242a" stroke="#363a45"/>' +
+      '<rect x="6" y="68" width="30" height="12" rx="3" fill="#22242a" stroke="#363a45"/>' +
+      '<text x="124" y="37" font-family="monospace" font-size="13" font-weight="700" fill="#f1f3f5">13.2</text>' +
+      '<rect x="128" y="44" width="26" height="2" fill="#ff6200"/>' +
+      '<rect x="128" y="52" width="30" height="12" rx="3" fill="#22242a" stroke="#363a45"/>' +
+      '<rect x="128" y="68" width="30" height="12" rx="3" fill="#22242a" stroke="#363a45"/>' +
+      '<rect x="52" y="20" width="56" height="46" rx="23" fill="none" stroke="#262930" stroke-width="1.5"/>' +
+      '<path d="M80 20 H85 A23 23 0 0 1 85 66" fill="none" stroke="#ff6200" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<text x="62" y="45" font-family="monospace" font-size="13" font-weight="700" fill="#f1f3f5">9</text>' +
+      '<text x="90" y="45" font-family="monospace" font-size="9" font-weight="700" fill="#ff6200">1:42</text>' +
+      '<rect x="66" y="72" width="28" height="6" rx="2" fill="#1c1e23"/>' +
+      '<rect x="46" y="82" width="30" height="6" rx="3" fill="#22242a" stroke="#363a45"/>' +
+      '<rect x="80" y="82" width="34" height="6" rx="3" fill="#dc2626"/>' }
 ];
 
 /** Ask the bridge what is actually in this build; fall back to all of them. */
@@ -1383,7 +1412,12 @@ function rpe(host) {
 var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
               'setSpeed', 'setRpe',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
-              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'setUi', 'wakeBoard'];
+              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'setUi', 'wakeBoard',
+              /* The two the panel UIs read rather than call. Stubbed here so a
+                 page can ask what the machine is without a try/catch around
+                 every access; both return nothing, which every caller treats
+                 as "unknown, use the defaults". */
+              'about', 'boardLimits'];
 
 /** @return true if this page is running without the console behind it. */
 function stub() {
@@ -1414,7 +1448,7 @@ function stub() {
   var pretendUi = 'original';
   s.currentUi = function () { return pretendUi; };
   s.availableUis = function () {
-    return '["original","ember","cluster","daylight","pacer"]';
+    return '["original","ember","cluster","daylight","pacer","super"]';
   };
   s.setUi = function (name) { pretendUi = name; console.log('Stride.setUi', name); };
 
