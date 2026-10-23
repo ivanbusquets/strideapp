@@ -213,8 +213,8 @@ button{
 .pgrid{display:flex;flex-wrap:wrap;width:288px}
 .pgrid button{
   width:88px;height:72px;margin:0 8px 8px 0;border-radius:8px;
-  border:1px solid var(--line);background:var(--panel2);color:var(--ink);
-  font-size:22.4px;font-weight:600;letter-spacing:-.02em;text-align:center;
+  border:1px solid var(--line);background:var(--panel2);color:#a8b0bc;
+  font-size:28px;font-weight:600;letter-spacing:-.02em;text-align:center;
   display:flex;align-items:center;justify-content:center;
 }
 .pgrid button:nth-child(3n){margin-right:0}
@@ -286,8 +286,11 @@ button{
 .ov{position:absolute;top:0;bottom:0;width:220px;margin-left:-110px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     text-align:center}
-.ov .k{font-size:11px;letter-spacing:.2em;color:var(--muted);font-weight:600;
-       line-height:17px;margin-bottom:4px}
+/* Only these two labels grow — LAP and LAP TIME. The 44px readouts under them
+   are deliberately untouched, so the labels carry a little more weight against
+   the numbers without changing the block's shape. */
+.ov .k{font-size:13px;letter-spacing:.2em;color:var(--muted);font-weight:600;
+       line-height:19px;margin-bottom:4px}
 .ov .n,.ov .t{font-size:44px;font-weight:700;line-height:1;letter-spacing:-.025em}
 .ov .t{color:var(--orange)}
 
@@ -310,6 +313,7 @@ button{
 @media (prefers-reduced-motion: reduce) {
   .ghost-bob, .ghost-skirt-a, .ghost-skirt-b { animation: none; }
   .ghost-skirt-b { opacity: 0; }
+  .hr .bpm svg.live { animation: none; }
 }
 
 /* the elevation profile (guided), centred in whatever the stage has left */
@@ -387,7 +391,20 @@ button{
 .hr{flex:none;height:102px;margin-top:2px;padding:16px 20px;background:var(--panel);
     border:1px solid var(--line);display:flex;align-items:center}
 .hr .bpm{display:flex;align-items:center;flex:none;margin-right:16px}
-.hr .bpm svg{width:44px;height:44px;display:block;margin-right:16px}
+.hr .bpm svg{width:44px;height:44px;display:block;margin-right:16px;
+             transform-origin:50% 50%}
+/* The heart beats at the rate it is reading. JS sets --beat from the bpm, so a
+   walk at 120 looks like 120 and a resting 60 looks like 60 — a fixed tempo
+   would be a decoration that lies about the number beside it. Not applied at
+   all when there is no reading: a still heart is the honest idle state. */
+@keyframes heart-beat{
+  0%,100%{transform:scale(1)}
+  12%{transform:scale(1.18)}
+  26%{transform:scale(1)}
+  38%{transform:scale(1.09)}
+  52%{transform:scale(1)}
+}
+.hr .bpm svg.live{animation:heart-beat var(--beat,1s) ease-in-out infinite}
 .hr .bpm .n{font-size:68px;font-weight:700;line-height:1;min-width:41px}
 .hr .bpm .u{font-size:14px;font-weight:600;color:var(--muted);margin-left:8px;
             align-self:flex-end;margin-bottom:5px}
@@ -396,8 +413,21 @@ button{
          background:var(--panel3);color:var(--dim);font-size:12px;font-weight:500;
          display:flex;align-items:center;justify-content:center}
 .hr .seg:last-child{margin-right:0}
-.hr .seg.on{background:var(--amber);border-color:var(--amber);color:#0b0c0e;
-            font-weight:700;letter-spacing:.05em;box-shadow:0 0 8px rgba(245,158,11,.3)}
+/* Only the zone you are in is lit; the rest keep the default grey. The colours
+   are the usual five-zone convention — recovery, aerobic, tempo, threshold,
+   maximum — with one deviation: Z1 is pale blue rather than the customary grey,
+   because grey is exactly what "not in this zone" looks like on this console. */
+.hr .seg.on{font-weight:700;letter-spacing:.05em}
+.hr .seg.on[data-z="1"]{background:#7dd3fc;border-color:#7dd3fc;color:#0b0c0e;
+                        box-shadow:0 0 8px rgba(125,211,252,.30)}
+.hr .seg.on[data-z="2"]{background:#3b82f6;border-color:#3b82f6;color:#ffffff;
+                        box-shadow:0 0 8px rgba(59,130,246,.35)}
+.hr .seg.on[data-z="3"]{background:#22c55e;border-color:#22c55e;color:#0b0c0e;
+                        box-shadow:0 0 8px rgba(34,197,94,.35)}
+.hr .seg.on[data-z="4"]{background:#f59e0b;border-color:#f59e0b;color:#0b0c0e;
+                        box-shadow:0 0 8px rgba(245,158,11,.30)}
+.hr .seg.on[data-z="5"]{background:#ef4444;border-color:#ef4444;color:#ffffff;
+                        box-shadow:0 0 8px rgba(239,68,68,.35)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
     white-space:nowrap}
 
@@ -462,8 +492,12 @@ button{
    two-card step and a four-card step both sit in the middle of the screen
    instead of hanging off the top of it. Width 100% keeps the inner rows free to
    centre themselves; .gone steps are display:none and take no flex space. */
+/* Padding is symmetric on purpose. The deck is a sibling pinned at top:732 and
+   never overlaps this box, so the old 96px bottom padding was reserving space
+   that nothing occupied — it just shoved every step 35px above the middle of
+   the area it is actually centred in. */
 .setup{position:absolute;left:0;top:52px;width:1280px;height:680px;
-       padding:26px 24px 96px;
+       padding:26px 24px;
        display:flex;flex-direction:column;justify-content:center;
        align-items:center}
 .step{display:block;width:100%}
@@ -569,19 +603,19 @@ button{
 .hrnote{margin-top:26px;text-align:center;font-size:11px;letter-spacing:.14em;
         color:var(--dim)}
 
-.stamp{position:absolute;left:0;top:560px;width:1280px;text-align:center;
-       font-size:10px;letter-spacing:.2em;color:var(--dim)}
-
+/* Twice the type, and the button grew to hold it. 58px is the tallest that
+   still clears the 68px deck with a gap above and below; going higher would
+   clip rather than fill. */
 .deck .ghost{
-  height:46px;padding:0 22px;border-radius:24px;border:1px solid var(--line2);
-  font-size:11px;letter-spacing:.16em;color:var(--muted);
+  height:58px;padding:0 34px;border-radius:29px;border:1px solid var(--line2);
+  font-size:22px;letter-spacing:.14em;color:var(--muted);
   display:flex;align-items:center;
 }
 .deck .ghost.down{background:var(--panel2);color:var(--ink)}
 .deck .go{
-  height:46px;margin-left:12px;padding:0 30px;border-radius:24px;
-  background:var(--orange);color:#0b0c0e;font-size:11px;font-weight:700;
-  letter-spacing:.16em;display:flex;align-items:center;
+  height:58px;margin-left:12px;padding:0 44px;border-radius:29px;
+  background:var(--orange);color:#0b0c0e;font-size:22px;font-weight:700;
+  letter-spacing:.14em;display:flex;align-items:center;
   box-shadow:0 0 14px rgba(255,98,0,.3);
 }
 .deck .go.down{background:#e05500}
@@ -695,8 +729,11 @@ button{
        touch-action:manipulation}
 .rpe-n.on{border-color:var(--orange);color:var(--ink);background:#241a12;
           box-shadow:0 0 12px rgba(255,98,0,.25)}
-.rpe-word{margin-top:10px;height:16px;text-align:center;font-size:10px;
-          letter-spacing:.22em;text-transform:uppercase;color:var(--orange)}
+/* 10px -> 20px, and the fixed 16px height had to grow with it or the taller
+   glyphs would have been clipped by the box rather than the row. */
+.rpe-word{margin-top:10px;min-height:28px;line-height:28px;text-align:center;
+          font-size:20px;letter-spacing:.22em;text-transform:uppercase;
+          color:var(--orange)}
 /* Five faces instead of ten numbers (see STRIDE.rpe's face mode). Bigger tiles,
    because a face has to be read at a glance and a numeral does not. */
 .rpe-faces .rpe-n{width:84px;height:84px;border-radius:16px;margin:0 7px;
@@ -732,7 +769,6 @@ button{
       <div class="hello" id="greeting">Hello</div>
       <div class="ask">Who&rsquo;s walking?</div>
       <div class="row people" id="people"></div>
-      <div class="stamp" id="stamp">&mdash;</div>
     </div>
 
     <div class="step gone" id="stControl">
@@ -982,7 +1018,7 @@ button{
 
         <div class="hr">
           <div class="bpm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#ff6200" stroke-width="1.9"
+            <svg id="hrHeart" viewBox="0 0 24 24" fill="none" stroke="#ff6200" stroke-width="1.9"
                  stroke-linejoin="round"><path d="M12 20.3l-1.2-1.1C6.3 15.1 3.4 12.5 3.4 9.2 3.4 6.6 5.4 4.6 8 4.6c1.5 0 2.9.7 4 1.8 1.1-1.1 2.5-1.8 4-1.8 2.6 0 4.6 2 4.6 4.6 0 3.3-2.9 5.9-7.4 10l-1.2 1.1z"/></svg>
             <span class="n" id="pulse">&mdash;</span>
             <span class="u">BPM</span>
@@ -1388,6 +1424,12 @@ const SPEED_PRESETS = [4.0, 6.0, 8.0, 10.0, 12.0, 14.0];
 const INCLINE_PRESETS = [-2.0, 0.0, 2.0, 4.0, 6.0, 8.0];
 let curSpeed = 0, curIncline = 0;
 
+/* Preset labels drop the decimal: every preset is a whole number, so "4.0" was
+   a trailing zero and nothing else. Written as a guard rather than a blanket
+   round, because a console set to miles turns 4 km/h into 2.5 mph — showing
+   that as "3" would name a speed the belt is not running. */
+const presetLabel = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
+
 function buildPresets(host, values, fmt, onPick) {
   host.innerHTML = '';
   values.forEach(v => {
@@ -1414,7 +1456,7 @@ function buildSpeedPresets(units) {
   SPEED_PRESETS.filter(kph => kph <= LIM.maxKph + 0.01 &&
                               kph >= Math.min(LIM.minKph, 0)).forEach(kph => {
     const b = document.createElement('button');
-    b.textContent = (units === 'mi' ? kph / MI_KM : kph).toFixed(1);
+    b.textContent = presetLabel(units === 'mi' ? kph / MI_KM : kph);
     b.setAttribute('data-v', String(kph));       // compared in km/h, always
     tap(b, () => Stride.setSpeed(kph));
     host.appendChild(b);
@@ -1428,7 +1470,7 @@ buildSpeedPresets('km');
 buildPresets($('inclinePresets'),
              INCLINE_PRESETS.filter(v => v >= LIM.minGrade - 0.01 &&
                                          v <= LIM.maxGrade + 0.01),
-             v => v.toFixed(1), v => Stride.incline(v - curIncline));
+             v => presetLabel(v), v => Stride.incline(v - curIncline));
 
 /* ---- setup flow ---------------------------------------------------------- */
 const STEPS = {profile: 'stProfile', control: 'stControl', plan: 'stPlan',
@@ -1963,6 +2005,15 @@ function renderWarm(s, guided) {
    casual walk, and a guided walk's segment line — the thing the reference has
    no place for and the walker most needs. */
 function renderStrip(s, guided, timed, hrMode) {
+  /* A casual walk gets no band at all. Climb and the lap number were the only
+     things in it, and the oval already carries the lap — so it was a second
+     copy of one figure and one figure nobody asked for, sitting under the
+     drawing. Guided and HR walks keep it: that is where the segment line and
+     the pace range live, and neither exists anywhere else. */
+  const casual = !timed && !hrMode && !guided;
+  $('strip2').classList.toggle('gone', casual);
+  if (casual) return;
+
   let badge = '';
   if (timed) {
     /* A warm-up has no live segment and no climb yet. It gets its own clock and
@@ -2021,6 +2072,16 @@ function renderHr(s) {
   const z = zoneFor(bpm, hrMax);
   $('pulse').textContent = bpm > 0 ? bpm : '\u2014';
   $('pulse').style.color = bpm > 0 ? '' : 'var(--dim)';
+  /* The heart beats at the rate it reads. Clamped to 40-200 so a strap having
+     a bad second cannot make it flicker or stall; no reading means no beat. */
+  const heart = $('hrHeart');
+  if (heart) {
+    heart.classList.toggle('live', bpm > 0);
+    if (bpm > 0) {
+      const rate = Math.max(40, Math.min(200, bpm));
+      heart.style.setProperty('--beat', (60 / rate).toFixed(2) + 's');
+    }
+  }
 
   /* The reference's meter has no room for the zone's name, so it is not drawn;
      it is still said, to whatever is reading the page rather than looking at
@@ -2127,8 +2188,6 @@ setInterval(() => {
   $('clockSetup').textContent = t;
   $('clockSum').textContent = t;
   $('sleepClock').textContent = t;
-  $('stamp').textContent =
-    (t + ' · ' + d.toLocaleDateString([], {weekday: 'long'})).toUpperCase();
 }, 1000);
 
 showScreen('scSetup');
