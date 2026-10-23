@@ -187,7 +187,7 @@ run it on any machine on your network and point the console at it.
 
 A few decisions that will save you reading the code to find them.
 
-- **Kotlin owns the treadmill, HTML owns the screen.** The five interfaces are
+- **Kotlin owns the treadmill, HTML owns the screen.** The interfaces are
   HTML in a WebView, so you can design them in a browser. Tap SPEED+ and the
   belt speeds up, but the request goes through Kotlin first, which clamps it to
   whatever the board says it can do. A bad layout can't outrun the machine.

@@ -2,7 +2,7 @@
 
 1280×800, straight off the console. Mocked-up numbers, made-up names.
 
-## The five interfaces
+## The interfaces
 
 Each one is a separate document with its own layout — not a theme. The
 treadmill behaves the same in all of them.
@@ -31,6 +31,11 @@ The light one, for a bright room.
 Chunky pills, hard to misread mid-stride.
 
 ![Pacer](screenshots/oval-pacer.png)
+
+### Super
+An instrument panel: incline and speed on stepped keys at either side, the oval
+in the middle, one red STOP. Denser than the other five — four telemetry cells
+and a heart-rate zone meter instead of one big hero.
 
 ## A guided walk
 

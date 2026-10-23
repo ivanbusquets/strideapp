@@ -193,7 +193,7 @@ class MainActivity : Activity() {
          * Anything named here but not yet present in the APK falls back to
          * [DEFAULT_UI], so this list can run ahead of the files.
          */
-        val UIS = listOf("original", "ember", "cluster", "daylight", "pacer")
+        val UIS = listOf("original", "ember", "cluster", "daylight", "pacer", "super")
         const val DEFAULT_UI = "original"
 
         const val PREFS = "stride"

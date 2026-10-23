@@ -55,6 +55,10 @@ TAPS = {
     "daylight": [(185, 455), (335, 450), (944, 450)],
     "pacer":    [(197, 430), (397, 445), (883, 450)],
     "cluster":  [(205, 390), (403, 400), (877, 400)],
+    # Super: the first name card, "Guided" in the middle of the three control
+    # cards, then Rolling hills in the plan step's four-up row. The name card
+    # assumes a full row, as the other four do.
+    "super":    [(282, 194), (640, 257), (495, 351)],
 }
 
 # Rolling hills at 30 minutes, resolved the way Plan.kt would.
