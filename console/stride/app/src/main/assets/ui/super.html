@@ -291,6 +291,27 @@ button{
 .ov .n,.ov .t{font-size:44px;font-weight:700;line-height:1;letter-spacing:-.025em}
 .ov .t{color:var(--orange)}
 
+/* the runner beacon is an animated ghost. The oval re-renders at 5 Hz, so the
+   motion is CSS-only and every animated transform sits on an inner group: the
+   translate JS writes lives on #lapGhost, the bob on .ghost-bob, and the two
+   never fight over the same transform. */
+@keyframes ghost-bob { from { transform: translateY(2.6px); } to { transform: translateY(-2.6px); } }
+@keyframes skirt-a { 0%,49.99% { opacity:1; } 50%,100% { opacity:0; } }
+@keyframes skirt-b { 0%,49.99% { opacity:0; } 50%,100% { opacity:1; } }
+
+.ghost-bob { animation: ghost-bob 1.1s ease-in-out infinite alternate; }
+.ghost-skirt-a { animation: skirt-a .52s steps(1,end) infinite; }
+.ghost-skirt-b { animation: skirt-b .52s steps(1,end) infinite; }
+
+/* the pupils lead the walk: JS sets a CSS transform from the lane tangent, so
+   they sweep through the turn instead of snapping at each 5 Hz redraw. */
+.ghost-eye { transition: transform .18s linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost-bob, .ghost-skirt-a, .ghost-skirt-b { animation: none; }
+  .ghost-skirt-b { opacity: 0; }
+}
+
 /* the elevation profile (guided), centred in whatever the stage has left */
 .prof{position:absolute;left:10px;top:50%;margin-top:-162px;width:588px;height:324px}
 .prof svg{position:absolute;left:36px;top:0;display:block}
@@ -437,9 +458,21 @@ button{
    The reference has no setup screens, so these are drawn in its language: the
    same header bus, the same hairlines, the same orange for the thing that is
    chosen. Cards rather than rows, because every step is a choice. */
+/* Each step is centred in the space left between the header and the deck, so a
+   two-card step and a four-card step both sit in the middle of the screen
+   instead of hanging off the top of it. Width 100% keeps the inner rows free to
+   centre themselves; .gone steps are display:none and take no flex space. */
 .setup{position:absolute;left:0;top:52px;width:1280px;height:680px;
-       padding:26px 24px 96px}
-.step{display:block}
+       padding:26px 24px 96px;
+       display:flex;flex-direction:column;justify-content:center;
+       align-items:center}
+.step{display:block;width:100%}
+/* The greeting that sits above the question on the profile step. Light weight
+   and large, so it reads as a welcome rather than a heading — the same
+   proportion original.html uses, in this theme's ink. */
+.hello{font-family:var(--sans);font-size:62px;font-weight:200;letter-spacing:.01em;
+       line-height:1.1;text-align:center;color:var(--ink)}
+.hello + .ask{margin-top:16px}
 .ask{font-family:var(--sans);font-size:26px;font-weight:600;letter-spacing:.02em;
      text-align:center;color:var(--ink)}
 .cap{font-size:10px;letter-spacing:.18em;color:var(--muted);font-weight:600}
@@ -457,8 +490,20 @@ button{
            color:var(--muted)}
 .card.pick .sub{color:#b9a89e}
 
-.row.people .card{width:212px;height:124px;margin:0 10px;
-                  display:flex;align-items:center;justify-content:center}
+/* The identity cards borrow original.html's shape — a big circle holding the
+   initial, the name under it — drawn in this theme's palette. Larger than the
+   other setup cards because this is the first screen on the console and the
+   only step where the target is a person rather than a setting. */
+.row.people{margin-top:48px}
+.row.people .card{width:212px;height:210px;margin:0 12px;border-radius:38px;
+                  display:flex;flex-direction:column;
+                  align-items:center;justify-content:center}
+.row.people .card .initial{width:84px;height:84px;border-radius:42px;
+                  border:2px solid var(--orange);color:var(--orange);
+                  font-size:38px;font-weight:200;line-height:80px;
+                  text-align:center}
+.row.people .card .name{margin-top:16px;font-size:26px;letter-spacing:.22em;
+                  text-transform:uppercase;color:var(--ink)}
 /* Four cards, not three: Casual, Guided, My routes and HR Target. 4 × 280 plus
    their gutters is 1216 of the 1232 the row has, so the set stays centred with
    the same 12px between cards whichever of the four are showing. */
@@ -652,6 +697,11 @@ button{
           box-shadow:0 0 12px rgba(255,98,0,.25)}
 .rpe-word{margin-top:10px;height:16px;text-align:center;font-size:10px;
           letter-spacing:.22em;text-transform:uppercase;color:var(--orange)}
+/* Five faces instead of ten numbers (see STRIDE.rpe's face mode). Bigger tiles,
+   because a face has to be read at a glance and a numeral does not. */
+.rpe-faces .rpe-n{width:84px;height:84px;border-radius:16px;margin:0 7px;
+                  font-size:0}
+.rpe-faces .rpe-n svg{width:46px;height:46px;display:block}
 
 /* ---- sleep -------------------------------------------------------------- */
 .sleep{position:absolute;top:0;right:0;bottom:0;left:0;display:none;
@@ -679,6 +729,7 @@ button{
 
   <div class="setup">
     <div class="step" id="stProfile">
+      <div class="hello" id="greeting">Hello</div>
       <div class="ask">Who&rsquo;s walking?</div>
       <div class="row people" id="people"></div>
       <div class="stamp" id="stamp">&mdash;</div>
@@ -690,7 +741,7 @@ button{
         <button class="card" id="pickCasual">
           <span class="big">Casual</span>
           <span class="sub">Nothing planned. Laps count themselves.</span></button>
-        <button class="card pick" id="pickGuided">
+        <button class="card" id="pickGuided">
           <span class="big">Guided</span>
           <span class="sub">A shape of hills, and a voice to walk it with.</span></button>
         <button class="card gone" id="pickRoutes">
@@ -831,9 +882,24 @@ button{
                   <path id="lapArc" stroke="#ff6200" stroke-width="7"
                         stroke-opacity="0.55" stroke-linecap="round"
                         pathLength="1000" stroke-dasharray="0 1000"/>
-                  <circle id="lapHalo" r="13" fill="#ff6200" fill-opacity="0.2"/>
-                  <circle id="lapDot" r="5.5" fill="#ff6200"/>
-                  <circle id="lapDotIn" r="2" fill="#ffffff"/>
+                  <!-- the runner beacon: an animated ghost on the casual oval -->
+                  <g id="lapGhost">
+                    <circle id="lapHalo" cy="-6" r="22" fill="#ff6200" fill-opacity="0.16"/>
+                    <g class="ghost-bob">
+                      <g transform="translate(-16,-24) scale(2)">
+                        <path class="ghost-body" fill="#ff6200"
+                              d="M0.7 14.2V7.9C0.7 3.8 3.9 0.6 8 0.6s7.3 3.2 7.3 7.3v6.3z"/>
+                        <path class="ghost-skirt ghost-skirt-a" fill="#ff6200"
+                              d="M0.7 14.2 3.3 18 5.5 14.2 8 18 10.7 14.2 13.3 18 15.3 14.2Z"/>
+                        <path class="ghost-skirt ghost-skirt-b" fill="#ff6200"
+                              d="M0.7 18 3.3 14.2 5.5 18 8 14.2 10.7 18 13.3 14.2 15.3 18 15.3 14.2 0.7 14.2Z"/>
+                        <circle cx="5.6" cy="7.4" r="2.5" fill="#ffffff"/>
+                        <circle cx="10.4" cy="7.4" r="2.5" fill="#ffffff"/>
+                        <circle class="ghost-eye" cx="5.6" cy="7.4" r="1.15" fill="#1b2230"/>
+                        <circle class="ghost-eye" cx="10.4" cy="7.4" r="1.15" fill="#1b2230"/>
+                      </g>
+                    </g>
+                  </g>
                 </svg>
                 <div class="ov" style="left:30.88%">
                   <span class="k">LAP</span>
@@ -1387,13 +1453,29 @@ function buildPeople() {
   STRIDE.profiles().forEach(name => {
     const b = document.createElement('button');
     b.className = 'card';
-    b.innerHTML = '<span class="big">' + esc(name) + '</span>';
+    b.innerHTML = '<span class="initial">' + esc(String(name).charAt(0)) + '</span>' +
+                  '<span class="name">' + esc(name) + '</span>';
     tap(b, () => flow.setProfile(name));
     $('people').appendChild(b);
   });
 }
 buildPeople();
 document.addEventListener('stride-settings-closed', buildPeople);
+
+/* The first words on the console are a greeting, so they say the time of day
+   rather than a fixed hello. Same three bands original.html uses; re-painted
+   every minute so a walk started after midnight does not still say evening. */
+function greet(h) {
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+function paintGreeting() {
+  const g = $('greeting');
+  if (g) g.textContent = greet(new Date().getHours());
+}
+paintGreeting();
+setInterval(paintGreeting, 60000);
 
 STRIDE.DURATIONS.forEach(m => {
   const b = document.createElement('button');
@@ -1510,10 +1592,21 @@ function paintHr(hr) {
 
 paintHr(flow.hr);
 
-tap($('pickCasual'), () => flow.setControl('casual'));
-tap($('pickGuided'), () => { flow.setControl('guided'); renderPlan(); });
-tap($('pickRoutes'), () => { flow.setControl('routes'); renderPlan(); });
-tap($('pickHr'),     () => flow.setControl('hrtarget'));
+/* The mode screen opens with nothing lit — the highlight is the walker's own
+   choice, not a default. markMode keeps it to one card at a time, and the last
+   choice stays lit if they step back here. */
+const MODE_CARDS = ['pickCasual', 'pickGuided', 'pickRoutes', 'pickHr'];
+function markMode(id) {
+  MODE_CARDS.forEach(function (cid) {
+    const el = $(cid);
+    if (el) el.classList.toggle('pick', cid === id);
+  });
+}
+
+tap($('pickCasual'), () => { markMode('pickCasual'); flow.setControl('casual'); });
+tap($('pickGuided'), () => { markMode('pickGuided'); flow.setControl('guided'); renderPlan(); });
+tap($('pickRoutes'), () => { markMode('pickRoutes'); flow.setControl('routes'); renderPlan(); });
+tap($('pickHr'),     () => { markMode('pickHr'); flow.setControl('hrtarget'); });
 tap($('btnBack'),    () => flow.back());
 tap($('btnBegin'),   () => flow.commit());
 
@@ -1566,7 +1659,7 @@ STRIDE.hold($('btnKeyBack'), 1200, () => Stride.ackDmk(),
             p => { $('keyFill').style.width = (p * 100) + '%'; });
 
 /* The 1-10 effort selector: built once here, styled above, run by stride-core. */
-STRIDE.rpe($('sumRpe'));
+STRIDE.rpe($('sumRpe'), {face: true});
 
 /* ---- coach --------------------------------------------------------------- */
 let coachTimer = null;
@@ -1797,9 +1890,24 @@ function renderLaps(s) {
   $('lapArc').style.opacity = f > 0.004 ? 1 : 0;
 
   const p = LANE.at(f);
-  ['lapHalo', 'lapDot', 'lapDotIn'].forEach(id => {
-    $(id).setAttribute('cx', p.x.toFixed(1));
-    $(id).setAttribute('cy', p.y.toFixed(1));
+  $('lapGhost').setAttribute('transform', `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`);
+
+  /* Which way is the walker going? LANE.at() wraps its own fraction, so a
+     tangent taken a hair behind the point stays correct across the finish
+     line. Only the pupils turn — a ghost that rotated would look like a
+     compass needle, and the oval is anticlockwise anyway. */
+  const back = LANE.at(f - 0.004);
+  let vx = p.x - back.x, vy = p.y - back.y;
+  const vlen = Math.hypot(vx, vy) || 1;
+  vx /= vlen; vy /= vlen;
+  /* Full travel in both axes: the sclera is r=2.5 and the pupil r=1.15, so
+     1.2 is the most the pupil can move before it starts to break the white.
+     The pupils sit exactly on the sclera centres, so the offset is symmetric
+     and a straight-line run looks fully left/right, not three-quarters. */
+  const look = 1.2;
+  document.querySelectorAll('.ghost-eye').forEach(function (eye) {
+    eye.style.transform = 'translate(' + (vx * look).toFixed(2) + 'px, ' +
+                                         (vy * look).toFixed(2) + 'px)';
   });
   fitOval();
 }

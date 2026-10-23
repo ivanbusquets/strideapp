@@ -1367,13 +1367,91 @@ var RPE_ANCHORS = [null, 'easy', 'easy', 'moderate', 'moderate', 'hard',
 /** What the line under the numbers says before anything is tapped. */
 var RPE_PROMPT = 'how hard was that?';
 
+/* ---------------------------------------------------------------------------
+   Face mode: five buckets instead of ten numbers.
+
+   A ten-way scale asks the walker to tell "6" from "7" on a treadmill, which
+   nobody can feel, and it turns the summary into arithmetic. Five faces say it
+   in one look. The numbers behind them are still 1-10, so the console, the
+   history and the summary keep the scale they already store — only the asking
+   gets friendlier.
+
+   Opt-in per theme via rpe(host, {face:true}). The other five interfaces keep
+   ten numbers, because restyling them is a separate decision.
+   --------------------------------------------------------------------------- */
+var RPE_FACES = [
+  { n: 2, word: 'easy',
+    svg: '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+         '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+         '<path d="M7.3 9.9q1.7-1.7 3.4 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
+         '<path d="M13.3 9.9q1.7-1.7 3.4 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
+         '<path d="M7.9 14.3q4.1 3.7 8.2 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' },
+  { n: 4, word: 'moderate',
+    svg: '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+         '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+         '<circle cx="8.8" cy="9.8" r="1.45" fill="currentColor"/>' +
+         '<circle cx="15.2" cy="9.8" r="1.45" fill="currentColor"/>' +
+         '<path d="M8.6 14.5q3.4 2.3 6.8 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' },
+  { n: 6, word: 'hard',
+    svg: '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+         '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+         '<path d="M6.9 6.9l3.3 1.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
+         '<path d="M17.1 6.9l-3.3 1.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
+         '<circle cx="8.8" cy="10.4" r="1.4" fill="currentColor"/>' +
+         '<circle cx="15.2" cy="10.4" r="1.4" fill="currentColor"/>' +
+         '<path d="M8.8 15.1h6.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>' },
+  { n: 8, word: 'very hard',
+    svg: '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+         '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+         '<path d="M6.7 7.3l3.5 1.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+         '<path d="M17.3 7.3l-3.5 1.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+         '<circle cx="8.9" cy="11.2" r="1.3" fill="currentColor"/>' +
+         '<circle cx="15.1" cy="11.2" r="1.3" fill="currentColor"/>' +
+         '<path d="M8.9 16.3q3.1-2.7 6.2 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>' },
+  { n: 10, word: 'all-out',
+    svg: '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+         '<circle cx="12" cy="12" r="9.3" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+         '<path d="M6.9 9.6h3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
+         '<path d="M13.7 9.6h3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
+         '<ellipse cx="12" cy="15.7" rx="3.2" ry="2.7" fill="currentColor"/></svg>' }
+];
+
+/** Whether the mounted selector is a face selector. There is only ever one. */
+var rpeFaceMode = false;
+
+function rpeFaceWord(n) {
+  for (var i = 0; i < RPE_FACES.length; i++) {
+    if (RPE_FACES[i].n === n) return RPE_FACES[i].word;
+  }
+  return '';
+}
+
+/**
+ * Nearest bucket to a ten-number value.
+ *
+ * Only used when adopting the console's copy of a rating given on an older
+ * build. A stored 7 still has to light something up, and 8 ("very hard") is
+ * closer to what the walker meant than 6 is.
+ */
+function rpeSnap(v) {
+  var best = RPE_FACES[0].n, bestD = 99;
+  for (var i = 0; i < RPE_FACES.length; i++) {
+    var d = Math.abs(RPE_FACES[i].n - v);
+    if (d < bestD) { bestD = d; best = RPE_FACES[i].n; }
+  }
+  return best;
+}
+
 /** The current selection, 0 for none. */
 var rpeValue = 0;
 
 /** Every selector on this page. There is one, but the painting is generic. */
 var rpeHosts = [];
 
-function rpeWord(n) { return RPE_ANCHORS[n] || ''; }
+function rpeWord(n) {
+  if (rpeFaceMode) return rpeFaceWord(n);
+  return RPE_ANCHORS[n] || '';
+}
 
 /** Redraw the selection on every mounted selector. */
 function rpePaint() {
@@ -1415,6 +1493,7 @@ function rpeReset() {
 function rpeSync(v) {
   v = v | 0;
   if (v < 1 || v > 10) return;
+  if (rpeFaceMode) v = rpeSnap(v);
   if (v === rpeValue) return;
   rpeValue = v;
   rpePaint();
@@ -1426,13 +1505,26 @@ function rpeSync(v) {
  * @param host an empty element in the summary's markup. The theme's CSS does
  *             the rest.
  */
-function rpe(host) {
+function rpe(host, opts) {
   if (!host) return host;
   if (host.getAttribute('data-rpe') === '1') return host;
   host.setAttribute('data-rpe', '1');
+  rpeFaceMode = !!(opts && opts.face);
   var row = document.createElement('div');
-  row.className = 'rpe-nums';
-  for (var n = 1; n <= 10; n++) {
+  row.className = rpeFaceMode ? 'rpe-nums rpe-faces' : 'rpe-nums';
+  if (rpeFaceMode) {
+    for (var f = 0; f < RPE_FACES.length; f++) {
+      var face = RPE_FACES[f];
+      var fb = document.createElement('div');
+      fb.className = 'rpe-n';
+      fb.setAttribute('data-n', String(face.n));
+      fb.setAttribute('aria-label', face.word);
+      fb.innerHTML = face.svg;
+      tap(fb, (function (v) { return function () { rpePick(v); }; })(face.n));
+      row.appendChild(fb);
+    }
+  }
+  for (var n = 1; !rpeFaceMode && n <= 10; n++) {
     var b = document.createElement('div');
     b.className = 'rpe-n';
     b.setAttribute('data-n', String(n));
