@@ -267,6 +267,15 @@ button{
 .strip2 .half.r .lab{color:var(--amber)}
 .strip2 .badge{margin-left:10px;font-size:9px;padding:2px 6px;border-radius:4px;
                background:var(--panel3);border:1px solid var(--line);color:var(--muted)}
+/* The ADJUST key: the strip is 29px and this fills it, which is a smaller
+   target than anything else on the console — but it is the one control reached
+   for rarely, and the alternative was a sixth key in the command deck. */
+.strip2 .adj{height:21px;margin-left:10px;padding:0 10px;border-radius:4px;
+             border:1px solid var(--line2);background:var(--panel3);
+             color:var(--ink);font-size:9px;font-weight:700;letter-spacing:.16em;
+             display:flex;align-items:center;flex:none}
+.strip2 .adj.down,.strip2 .adj:active{background:var(--orange);
+             border-color:var(--orange);color:#0b0c0e}
 .strip2 .vline{width:1px;height:12px;background:var(--line);margin:0 14px;flex:none}
 
 /* the oval: the reference's 680x370 drawing at its rendered 0.894 scale,
@@ -305,6 +314,36 @@ button{
 .warm .c{font-size:96px;font-weight:700;line-height:1;letter-spacing:-.04em;
          margin-top:14px}
 .warm .n{margin-top:16px;font-size:14px;color:var(--muted)}
+
+/* ---- the heart-rate target (HR Target walk) ----------------------------
+   The one hero that is entirely a number: the bpm being held, what the strap
+   is reading, and the speed the console suggests taking to close the gap. The
+   pill is a button — nothing on this console moves the belt on its own, and
+   HrTarget only ever suggests (see SAFETY.md), so the suggestion has to be
+   takeable. */
+.hrhero{flex-direction:column;align-items:center;justify-content:center;
+        text-align:center}
+.hero.on.hrhero{display:flex}
+.hrhero .k{font-size:11px;letter-spacing:.24em;color:var(--muted);font-weight:700}
+.hrhero .t{font-size:104px;font-weight:700;line-height:1;letter-spacing:-.05em;
+           margin-top:8px}
+.hrhero .t u{font-size:16px;font-weight:700;letter-spacing:0;color:var(--muted);
+             text-decoration:none;margin-left:12px}
+.hrhero .now{margin-top:12px;font-size:11px;letter-spacing:.2em;color:var(--muted)}
+.hrhero .now b{color:var(--ink);font-size:19px;letter-spacing:0;font-weight:700;
+               margin:0 6px 0 8px}
+.hero.on.hrhero .pill{
+  margin-top:30px;height:76px;padding:0 44px;border-radius:38px;
+  background:#241a12;border:1px solid var(--orange);color:var(--ink);
+  font-size:22px;font-weight:600;letter-spacing:.01em;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 18px rgba(255,98,0,.18);
+}
+.hero.on.hrhero .pill b{color:var(--orange);font-weight:700;margin:0 6px}
+.hero.on.hrhero .pill.quiet{background:none;border-color:var(--line2);
+  color:var(--muted);box-shadow:none}
+.hero.on.hrhero .pill.quiet b{color:var(--muted)}
+.hero.on.hrhero .pill.down,.hero.on.hrhero .pill:active{transform:translateY(2px)}
 
 /* ---- centre: the coach --------------------------------------------------
    Docked in its own band above the heart-rate meter, never over a readout.
@@ -415,10 +454,13 @@ button{
 
 .row.people .card{width:212px;height:124px;margin:0 10px;
                   display:flex;align-items:center;justify-content:center}
-.row.control .card{width:330px;height:250px;margin:0 12px;padding:0 26px;
+/* Four cards, not three: Casual, Guided, My routes and HR Target. 4 × 280 plus
+   their gutters is 1216 of the 1232 the row has, so the set stays centred with
+   the same 12px between cards whichever of the four are showing. */
+.row.control .card{width:280px;height:250px;margin:0 12px;padding:0 24px;
                    display:flex;flex-direction:column;align-items:center;
                    justify-content:center}
-.row.control .card .big{font-size:28px}
+.row.control .card .big{font-size:26px}
 
 .mins{display:flex;justify-content:center;margin-top:16px}
 .mins .card{width:132px;height:66px;margin:0 7px;
@@ -449,6 +491,33 @@ button{
                   fill:var(--muted)}
 .shapes .loop.on{border-color:var(--orange);background:#241a12}
 .shapes .loop.on svg{fill:var(--orange)}
+
+/* ---- HR target: the numbers ---------------------------------------------
+   Three of them, set once at setup and adjustable mid-walk. Drawn as the
+   reference's stepper: a label, a figure, a key either side. The value is the
+   biggest thing on the step because it is the only thing being chosen. */
+.hrset{display:flex;flex-direction:column;align-items:center}
+.hrrow{display:flex;align-items:center;width:600px;margin:12px 0;
+       justify-content:space-between}
+.hrlab{width:210px;font-size:11px;font-weight:700;letter-spacing:.2em;
+       color:var(--muted)}
+.hrkey{
+  width:84px;height:72px;border-radius:10px;flex:none;
+  border:1px solid rgba(54,58,69,.6);
+  background:linear-gradient(180deg,#22242a 0%,#17181c 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 3px 5px rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;font-weight:700;color:var(--ink);
+}
+.hrkey.down,.hrkey:active{transform:translateY(1.5px);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.9),0 0 0 1px var(--orange)}
+.hrval{min-width:168px;text-align:center;font-size:42px;font-weight:700;
+       letter-spacing:-.03em}
+.hrval u{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0;
+         text-decoration:none;margin-left:8px}
+.hrval.heat{color:var(--orange)}
+.hrnote{margin-top:26px;text-align:center;font-size:11px;letter-spacing:.14em;
+        color:var(--dim)}
 
 .stamp{position:absolute;left:0;top:560px;width:1280px;text-align:center;
        font-size:10px;letter-spacing:.2em;color:var(--dim)}
@@ -488,6 +557,30 @@ button{
                   font-weight:600}
 .paused .row .card.pick{border-color:var(--orange)}
 .paused .row .card.pick .lab{color:var(--orange)}
+
+/* ---- adjusting the HR target mid-walk -----------------------------------
+   Opened from the ADJUST key in the strip under the viewport. It owns the
+   console while it is up, the way the paused overlay does: changing the
+   numbers the belt is being walked against is a deliberate act, and the belt
+   keys underneath are not part of it. DONE is the only way out, and it is what
+   sends the numbers to Kotlin — a half-finished adjustment never reaches the
+   machine. */
+.hredit{position:absolute;left:0;top:52px;width:1280px;height:748px;
+        display:none;z-index:55}
+.hredit.on{display:block}
+.hredit .scrim{position:absolute;left:0;top:0;width:1280px;height:748px;
+               background:rgba(8,8,10,.975)}
+.hredit .h{position:absolute;left:0;top:96px;width:1280px;text-align:center;
+           font-size:34px;font-weight:700;letter-spacing:-.01em}
+.hredit .s{position:absolute;left:0;top:146px;width:1280px;text-align:center;
+           font-size:12px;letter-spacing:.16em;color:var(--dim)}
+.hredit .hrset{position:absolute;left:340px;top:200px;width:600px}
+.hredit button.done{position:absolute;left:520px;top:596px;width:240px;height:64px;
+  border-radius:32px;background:var(--orange);color:#0b0c0e;
+  font-size:14px;font-weight:700;letter-spacing:.18em;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 14px rgba(255,98,0,.3)}
+.hredit button.done.down{background:#e05500}
 
 /* ---- safety key ---------------------------------------------------------
    The only screen allowed red as a field colour, and the only thing on the
@@ -595,6 +688,9 @@ button{
         <button class="card gone" id="pickRoutes">
           <span class="big">My routes</span>
           <span class="sub">A walk you have already done, hills and all.</span></button>
+        <button class="card" id="pickHr">
+          <span class="big">HR Target</span>
+          <span class="sub">Hold a heart rate, inside a speed you set.</span></button>
       </div>
     </div>
 
@@ -603,6 +699,32 @@ button{
       <div class="mins" id="mins"></div>
       <div class="cap" id="capShape" style="margin-top:20px">THE SHAPE OF IT</div>
       <div class="shapes" id="shapes"></div>
+    </div>
+
+    <!-- 04 · HR target — three numbers, then BEGIN -->
+    <div class="step gone" id="stHr">
+      <div class="ask">Hold a heart rate, and let the pace follow</div>
+      <div class="hrset" id="hrSetup">
+        <div class="hrrow">
+          <div class="hrlab">EASIEST PACE</div>
+          <button class="hrkey" id="hrMinDown" aria-label="Minimum speed down">&minus;</button>
+          <div class="hrval" id="hrMinVal">3.0<u>KM/H</u></div>
+          <button class="hrkey" id="hrMinUp" aria-label="Minimum speed up">+</button>
+        </div>
+        <div class="hrrow">
+          <div class="hrlab">FASTEST PACE</div>
+          <button class="hrkey" id="hrMaxDown" aria-label="Maximum speed down">&minus;</button>
+          <div class="hrval" id="hrMaxVal">7.0<u>KM/H</u></div>
+          <button class="hrkey" id="hrMaxUp" aria-label="Maximum speed up">+</button>
+        </div>
+        <div class="hrrow">
+          <div class="hrlab">TARGET HEART RATE</div>
+          <button class="hrkey" id="hrBpmDown" aria-label="Target heart rate down">&minus;</button>
+          <div class="hrval heat" id="hrBpmVal">130<u>BPM</u></div>
+          <button class="hrkey" id="hrBpmUp" aria-label="Target heart rate up">+</button>
+        </div>
+      </div>
+      <div class="hrnote">IT SUGGESTS A PACE. IT NEVER MOVES THE BELT BY ITSELF.</div>
     </div>
   </div>
 
@@ -747,6 +869,14 @@ button{
               </div>
             </div>
 
+            <!-- the heart-rate target, for an HR Target walk -->
+            <div class="hero hrhero" id="heroHr">
+              <div class="k">TARGET HEART RATE</div>
+              <div class="t"><span id="hrHeroTarget">130</span><u>BPM</u></div>
+              <div class="now">NOW<b id="hrHeroNow">&mdash;</b>BPM</div>
+              <button class="pill" id="hrHeroPill"></button>
+            </div>
+
             <!-- the countdown, for a timed phase -->
             <div class="hero warm" id="heroWarm">
               <div class="t" id="warmTitle">WARM-UP</div>
@@ -765,6 +895,7 @@ button{
               <span class="lab" id="stripR"></span>
               <span class="num" id="stripRv"></span>
               <span class="badge" id="stripBadge"></span>
+              <button class="adj gone" id="btnHrAdjust">ADJUST</button>
             </div>
           </div>
         </div>
@@ -820,6 +951,34 @@ button{
         <div class="pgrid" id="speedPresets"></div>
       </div>
     </aside>
+  </div>
+
+  <!-- the HR target, adjusted mid-walk — see the CSS note -->
+  <div class="hredit" id="hredit">
+    <div class="scrim"></div>
+    <div class="h">Adjust the target</div>
+    <div class="s">THE BELT KEEPS ITS PACE WHILE YOU DO.</div>
+    <div class="hrset">
+      <div class="hrrow">
+        <div class="hrlab">EASIEST PACE</div>
+        <button class="hrkey" id="heMinDown" aria-label="Minimum speed down">&minus;</button>
+        <div class="hrval" id="heMinVal">3.0<u>KM/H</u></div>
+        <button class="hrkey" id="heMinUp" aria-label="Minimum speed up">+</button>
+      </div>
+      <div class="hrrow">
+        <div class="hrlab">FASTEST PACE</div>
+        <button class="hrkey" id="heMaxDown" aria-label="Maximum speed down">&minus;</button>
+        <div class="hrval" id="heMaxVal">7.0<u>KM/H</u></div>
+        <button class="hrkey" id="heMaxUp" aria-label="Maximum speed up">+</button>
+      </div>
+      <div class="hrrow">
+        <div class="hrlab">TARGET HEART RATE</div>
+        <button class="hrkey" id="heBpmDown" aria-label="Target heart rate down">&minus;</button>
+        <div class="hrval heat" id="heBpmVal">130<u>BPM</u></div>
+        <button class="hrkey" id="heBpmUp" aria-label="Target heart rate up">+</button>
+      </div>
+    </div>
+    <button class="done" id="btnHrDone">DONE</button>
   </div>
 
   <!-- 09 · paused -->
@@ -1198,15 +1357,17 @@ buildPresets($('inclinePresets'),
              v => v.toFixed(1), v => Stride.incline(v - curIncline));
 
 /* ---- setup flow ---------------------------------------------------------- */
-const STEPS = {profile: 'stProfile', control: 'stControl', plan: 'stPlan'};
+const STEPS = {profile: 'stProfile', control: 'stControl', plan: 'stPlan',
+               hr: 'stHr'};
 
 const flow = STRIDE.flow((step) => {
   Object.keys(STEPS).forEach(k => $(STEPS[k]).classList.toggle('gone', k !== step));
   $('btnBack').classList.toggle('gone', step === 'profile');
-  // BEGIN only exists on the plan step; every other step commits by tapping
-  // the thing you chose.
-  $('btnBegin').classList.toggle('gone', step !== 'plan');
+  // BEGIN exists on the two steps that end in it — a plan, and the HR target's
+  // three numbers. Every other step commits by tapping the thing you chose.
+  $('btnBegin').classList.toggle('gone', step !== 'plan' && step !== 'hr');
   if (step === 'control') refreshControl();
+  if (step === 'hr') paintHr(flow.hr);
 });
 
 /* Read from Settings, never written here: a name offered on this picker that
@@ -1306,9 +1467,45 @@ function refreshControl() {
 
 renderPlan();
 
+/* ---- the HR target's three numbers ---------------------------------------
+   An HR Target walk holds a heart rate instead of a pace, inside a speed range
+   the walker sets. The numbers themselves — and the clamps on them — live in
+   STRIDE.flow (stepHr), because the setup step and the mid-walk ADJUST overlay
+   are the same six keys twice: a press that meant 0.5 km/h at setup and 0.4
+   mid-walk would be a bug nobody would find until the belt felt wrong. */
+const HR_FIELDS = [
+  {field: 'minKph', ids: ['hrMinVal', 'heMinVal'], unit: 'KM/H'},
+  {field: 'maxKph', ids: ['hrMaxVal', 'heMaxVal'], unit: 'KM/H'},
+  {field: 'bpm',    ids: ['hrBpmVal', 'heBpmVal'], unit: 'BPM'}
+];
+
+function paintHr(hr) {
+  HR_FIELDS.forEach(f => {
+    const v = f.field === 'bpm' ? String(hr.bpm) : hr[f.field].toFixed(1);
+    f.ids.forEach(id => {
+      const el = $(id);
+      if (el) el.innerHTML = v + '<u>' + f.unit + '</u>';
+    });
+  });
+}
+
+[['hrMinDown', 'minKph', -1], ['hrMinUp', 'minKph', 1],
+ ['hrMaxDown', 'maxKph', -1], ['hrMaxUp', 'maxKph', 1],
+ ['hrBpmDown', 'bpm', -1],    ['hrBpmUp', 'bpm', 1],
+ ['heMinDown', 'minKph', -1], ['heMinUp', 'minKph', 1],
+ ['heMaxDown', 'maxKph', -1], ['heMaxUp', 'maxKph', 1],
+ ['heBpmDown', 'bpm', -1],    ['heBpmUp', 'bpm', 1]
+].forEach(k => STRIDE.stepper($(k[0]), () => {
+  flow.stepHr(k[1], k[2]);
+  paintHr(flow.hr);
+}, 0.5, 0.5));
+
+paintHr(flow.hr);
+
 tap($('pickCasual'), () => flow.setControl('casual'));
 tap($('pickGuided'), () => { flow.setControl('guided'); renderPlan(); });
 tap($('pickRoutes'), () => { flow.setControl('routes'); renderPlan(); });
+tap($('pickHr'),     () => flow.setControl('hrtarget'));
 tap($('btnBack'),    () => flow.back());
 tap($('btnBegin'),   () => flow.commit());
 
@@ -1440,6 +1637,9 @@ function showScreen(id) {
   if (id !== 'scLive') {
     $('paused').classList.remove('on');
     $('coach').classList.remove('on');
+    // An adjustment belongs to a walk in progress; it cannot outlive the screen
+    // that owns it, or it would sit over the summary.
+    $('hredit').classList.remove('on');
   }
   // Changing screen counts as activity, or a finished walk lands on the
   // summary with half an hour of "idle" already banked and dims before it can
@@ -1468,6 +1668,10 @@ window.render = function (raw) {
 function renderLive(s) {
   const guided = s.control === 'guided';
   const timed = s.phase === 'warmup' || s.phase === 'cooldown';
+  /* An HR Target walk carries no plan and no segments, so nothing else in the
+     frame distinguishes it: a bpm being aimed for is the whole signal. Zero on
+     every other kind of walk — see adapt() in stride-core. */
+  const hrMode = s.hrTarget.bpm > 0;
   const units = paceUnits();
 
   $('who').textContent = (s.profile || '').toUpperCase();
@@ -1513,13 +1717,18 @@ function renderLive(s) {
   $('speedSuggest').textContent = suggestKph
     ? 'TAP TO ' + (delta > 0 ? 'LIFT TO ' : 'EASE TO ') + suggestKph.toFixed(1) : '';
 
-  /* One hero at a time, in the same slot. */
-  const hero = timed ? 'heroWarm' : guided ? 'heroPath' : 'heroLaps';
-  ['heroLaps', 'heroPath', 'heroWarm'].forEach(h => $(h).classList.toggle('on', h === hero));
+  /* One hero at a time, in the same slot. A timed phase outranks everything —
+     a warm-up that drew a target the walk has not reached yet would be
+     claiming to be a walk that has not started. */
+  const hero = timed ? 'heroWarm' : hrMode ? 'heroHr'
+             : guided ? 'heroPath' : 'heroLaps';
+  ['heroLaps', 'heroPath', 'heroWarm', 'heroHr']
+    .forEach(h => $(h).classList.toggle('on', h === hero));
   if (hero === 'heroLaps') renderLaps(s);
   if (hero === 'heroPath') renderPath(s);
   if (hero === 'heroWarm') renderWarm(s, guided);
-  renderStrip(s, guided, timed);
+  if (hero === 'heroHr') renderHrTarget(s);
+  renderStrip(s, guided, timed, hrMode);
 
   renderHr(s);
 
@@ -1534,6 +1743,14 @@ function renderLive(s) {
   const moving = s.phase === 'active' || timed;
   $('btnSpeedUp').style.opacity = moving ? '' : '.4';
   $('btnSpeedDown').style.opacity = moving ? '' : '.4';
+
+  /* The ADJUST key belongs to an HR walk that is actually running: during a
+     warm-up or cool-down the strip is a countdown, not a target, and a paused
+     console already has an overlay of its own. Closing the overlay with it is
+     what stops it surviving a phase change and covering the paused screen. */
+  const hrEditing = hrMode && s.phase === 'active';
+  $('btnHrAdjust').classList.toggle('gone', !hrEditing);
+  if (!hrEditing) $('hredit').classList.remove('on');
 
   $('liveDeck').classList.toggle('gone', s.phase === 'paused');
   if (s.phase !== 'paused') $('paused').classList.remove('on');
@@ -1629,7 +1846,7 @@ function renderWarm(s, guided) {
 /* The band under the viewport. It is the reference's last/best lap row for a
    casual walk, and a guided walk's segment line — the thing the reference has
    no place for and the walker most needs. */
-function renderStrip(s, guided, timed) {
+function renderStrip(s, guided, timed, hrMode) {
   let badge = '';
   if (timed) {
     /* A warm-up has no live segment and no climb yet. It gets its own clock and
@@ -1638,6 +1855,15 @@ function renderStrip(s, guided, timed) {
     $('stripLv').textContent = s.phase === 'warmup' ? 'WARM-UP' : 'COOL-DOWN';
     $('stripR').textContent = 'PLAN';
     $('stripRv').textContent = planName || '\u2014';
+  } else if (hrMode) {
+    /* An HR walk has no segment and no lap: the two numbers that matter are
+       the range the belt may move in and the bpm it is being walked against.
+       The ADJUST key sits beside them — see renderLive. */
+    $('stripL').textContent = 'PACE RANGE';
+    $('stripLv').textContent = s.hrTarget.minKph.toFixed(1) + '\u2013' +
+                               s.hrTarget.maxKph.toFixed(1) + ' KM/H';
+    $('stripR').textContent = 'TARGET';
+    $('stripRv').textContent = s.hrTarget.bpm + ' BPM';
   } else if (!guided) {
     /* The reference leaves this band empty. Climb is the one figure the app
        has that the four cells have no room for, so it lives here. */
@@ -1696,6 +1922,57 @@ function renderHr(s) {
               : 'Zone ' + n + ', ' + STRIDE.ZONES[n].name);
   });
 }
+
+/* ---- an HR Target walk ---------------------------------------------------
+   The console holds a heart rate instead of a pace. HrTarget (Kotlin) works out
+   a speed that should close the gap and sends it as hrSuggestKph; nothing on
+   this side applies it, so the pill is a key rather than a readout — exactly
+   like a guided walk's pace hint. Taking it counts as a manual speed change on
+   the console, which re-arms the controller from the pace actually set. */
+let hrSuggestKph = 0;
+
+function renderHrTarget(s) {
+  const t = s.hrTarget;
+  $('hrHeroTarget').textContent = t.bpm;
+
+  const bpm = s.session.pulse;
+  $('hrHeroNow').textContent = bpm > 0 ? bpm : '\u2014';
+  $('hrHeroNow').style.color = bpm > 0 ? '' : 'var(--dim)';
+
+  hrSuggestKph = t.suggest > 0 ? t.suggest : 0;
+  const delta = hrSuggestKph - s.belt.speed;
+  const take = hrSuggestKph > 0 && Math.abs(delta) > 0.15;
+  const pill = $('hrHeroPill');
+  pill.classList.toggle('quiet', !take);
+  pill.innerHTML = !hrSuggestKph ? 'WAITING FOR A READING'
+    : take ? 'TAP TO ' + (delta > 0 ? 'LIFT TO ' : 'EASE TO') +
+             ' <b>' + hrSuggestKph.toFixed(1) + '</b> KM/H'
+    : 'HOLDING WELL';
+
+  /* ADJUST must open on the numbers the belt is actually being walked against,
+     which are Kotlin's — they may have been changed mid-walk. Not while the
+     overlay is up, though: those frames would overwrite a press before it
+     reached the machine and the key would look broken. */
+  if (!$('hredit').classList.contains('on')) {
+    flow.hr.minKph = t.minKph;
+    flow.hr.maxKph = t.maxKph;
+    flow.hr.bpm    = t.bpm;
+  }
+}
+
+tap($('hrHeroPill'), () => { if (hrSuggestKph > 0) Stride.setSpeed(hrSuggestKph); });
+
+tap($('btnHrAdjust'), () => {
+  paintHr(flow.hr);
+  $('hredit').classList.add('on');
+});
+
+/* DONE is the only way out and the only thing that sends the numbers, so a
+   half-finished adjustment never reaches a moving belt. */
+tap($('btnHrDone'), () => {
+  $('hredit').classList.remove('on');
+  Stride.setHrTarget(flow.hr.minKph, flow.hr.maxKph, flow.hr.bpm);
+});
 
 /* Tapping the suggestion takes it. Accepting the coach's number used to mean
    holding + until you reached it. */

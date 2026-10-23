@@ -571,6 +571,18 @@ function adapt(raw) {
                 measured: raw.beltKph || 0,
                 slipping: !!raw.slipping },
 
+    /* An HR Target walk: the belt is walked against a heart rate inside two
+       speed bounds the walker set. `bpm` is 0 on every other kind of walk and
+       is the flag for the mode — see chooseHrTarget in MainActivity.
+
+       `suggest` is a suggestion like a guided walk's pace hint: HrTarget
+       computes it and the walker takes it by tapping it. Nothing on this
+       console moves the belt from here. */
+    hrTarget: { bpm:    raw.hrTargetBpm || 0,
+                minKph: raw.hrTargetMinKph || 0,
+                maxKph: raw.hrTargetMaxKph || 0,
+                suggest: raw.hrSuggestKph || 0 },
+
     /* Guided owns incline only. `speed` here is a suggestion the user is free
        to ignore, and nothing may apply it to the belt. */
     targets:  { speed: raw.targetSpeed || 0,
@@ -849,7 +861,9 @@ var SHAPES = [
 
 /**
  * @param onStep  called with (stepId, flow) whenever the step changes, so the
- *                UI can show the right card. Steps: profile | control | plan.
+ *                UI can show the right card.
+ *                Steps: profile | control | plan | hr.
+ *                `hr` is only reached by an interface that offers HR Target.
  *
  * There is no walk-or-run step, and deliberately no walk-or-run *anything*.
  * It cost a tap on every session to set a noun, and it sold itself on a speed
@@ -898,6 +912,9 @@ function flow(onStep) {
       // cannot arm the belt when a shape is picked afterwards.
       f.route = null;
       f.loop = false;
+      // HR Target has no plan and no duration: it asks for three numbers and
+      // then BEGIN arms the belt.
+      if (c === 'hrtarget') return f.go('hr');
       return f.go('plan');
     },
 
@@ -934,9 +951,39 @@ function flow(onStep) {
     setMinutes: function (m) { f.minutes = m; return f; },
     setShape:   function (s) { f.shape = s;   return f; },
 
+    /* HR Target: the belt is walked against a heart rate instead of a pace,
+       inside two speed bounds the walker sets here. Three numbers, and the
+       live screen's ADJUST overlay steps them through the same helper — setup
+       and mid-walk must not disagree about what 0.5 km/h means. */
+    hr: { minKph: 3.0, maxKph: 7.0, bpm: 130 },
+
+    /**
+     * One press of a − / + key. `which` is 'minKph', 'maxKph' or 'bpm'.
+     *
+     * The bounds are the ones original.html has always applied (1-20 km/h in
+     * halves, 80-200 bpm in fives), and the two speeds cannot cross: pushing
+     * MIN past MAX drags MAX along rather than quietly inverting the range.
+     */
+    stepHr: function (which, dir) {
+      if (which === 'bpm') {
+        f.hr.bpm = Math.max(80, Math.min(200, f.hr.bpm + dir * 5));
+      } else {
+        f.hr[which] = Math.max(1.0, Math.min(20.0, f.hr[which] + dir * 0.5));
+        if (f.hr.minKph > f.hr.maxKph) {
+          if (which === 'minKph') f.hr.maxKph = f.hr.minKph;
+          else                    f.hr.minKph = f.hr.maxKph;
+        }
+      }
+      return f;
+    },
+
     /** The one call that arms the belt. */
     commit: function () {
       if (f.control === 'casual') { global.Stride.choose(); return f; }
+      if (f.control === 'hrtarget') {
+        global.Stride.chooseHrTarget(f.hr.minKph, f.hr.maxKph, f.hr.bpm);
+        return f;
+      }
       if (f.control === 'routes') {
         // Nothing to arm the belt with if no route was picked.
         if (f.route) global.Stride.chooseRoute(f.route, f.loop);
@@ -947,6 +994,7 @@ function flow(onStep) {
     },
 
     back: function () {
+      if (f.step === 'hr')      return f.go('control');
       if (f.step === 'plan')    return f.go('control');
       if (f.step === 'control') return f.go('profile');
       return f;
@@ -1409,7 +1457,8 @@ function rpe(host) {
    one carrying its own copy of the stub.
    =========================================================================== */
 
-var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
+var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'chooseHrTarget', 'setHrTarget',
+              'skipWarmup', 'skipCooldown', 'pause',
               'setSpeed', 'setRpe',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
               'setWalker', 'ackDmk', 'hushCoach', 'dim', 'setUi', 'wakeBoard',
@@ -1627,7 +1676,7 @@ function wakeStep(overlay, done) {
    =========================================================================== */
 
 var DEMO_SCREENS = ['welcome', 'warmup', 'live-casual', 'live-guided',
-                    'paused', 'cooldown', 'summary'];
+                    'paused', 'cooldown', 'summary', 'live-hr'];
 
 function demo(opts) {
   opts = opts || {};
@@ -1639,6 +1688,9 @@ function demo(opts) {
   });
 
   var screen = q.screen || opts.screen || 'live-guided';
+  /* An HR Target walk frame: no plan and no lap hero, one bpm to hold and a
+     suggested speed under it — enough to lay out a layout that has to draw it. */
+  var hr = screen === 'live-hr';
   var guided = screen === 'live-guided' || screen === 'warmup' || opts.guided;
 
   /* Rolling hills at 30 minutes, resolved the way Plan.kt would. */
@@ -1660,7 +1712,7 @@ function demo(opts) {
   var dist = 720, cals = 78;
 
   function frame() {
-    var phase = screen === 'live-casual' || screen === 'live-guided' ? 'running'
+    var phase = screen === 'live-casual' || screen === 'live-guided' || hr ? 'running'
               : screen === 'welcome' ? 'welcome' : screen;
     var moving = phase === 'running' || phase === 'warmup' || phase === 'cooldown';
     var step = null, idx = 0;
@@ -1676,7 +1728,11 @@ function demo(opts) {
       speed: speed, incline: guided ? step.incline : 1.5,
       targetSpeed: speed, targetIncline: guided ? step.incline : 1.5,
       distance: Math.round(dist), elapsed: Math.round(t),
-      calories: Math.round(cals), pulse: 0, fan: 2,
+      calories: Math.round(cals), pulse: hr ? 118 : 0, fan: 2,
+      hrTargetBpm: hr ? 130 : 0,
+      hrTargetMinKph: hr ? 3.0 : 0,
+      hrTargetMaxKph: hr ? 7.0 : 0,
+      hrSuggestKph: hr ? 6.1 : 0,
       workout: 'workout', dmk: q.dmk === '1',
       ramping: '', phaseLeft: phase === 'warmup' ? 161 : 0, boardMode: 2,
       avgSpeed: 5.2, maxSpeed: 6.1, avgIncline: 3.4, maxIncline: 9.5,
@@ -1707,6 +1763,7 @@ function demo(opts) {
     var pick = DEMO_SCREENS[n === 0 ? 9 : n - 1];
     if (!pick) return;
     screen = pick;
+    hr = pick === 'live-hr';
     guided = pick === 'live-guided' || pick === 'warmup';
     if (guided && global.plan) global.plan({ name: 'Rolling hills', steps: steps });
     if (pick === 'welcome') resetDerived();

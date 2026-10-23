@@ -31,8 +31,8 @@ android {
         // Bumped per release, because the About screen is the only place
         // anyone can see which build is on a console, and "0.1-spike · build 1"
         // was still being shown four months and one published repo later.
-        versionCode = 4
-        versionName = "0.8.0"
+        versionCode = 5
+        versionName = "0.9"
 
         buildConfigField("String", "MQTT_BROKER", secret("mqtt.broker", ""))
         buildConfigField("String", "MQTT_USER", secret("mqtt.user"))
