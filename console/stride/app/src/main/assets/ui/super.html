@@ -390,9 +390,14 @@ button{
    the two things reached for in a hurry, mid-stride. The deck grows to hold
    them and the viewport above pays for it. */
 .cdeck.gone{display:none}
+/* Above the HR-target overlay (55), below the safety key (60). The overlay
+   takes the console while it is up, but not these two: STOP has to be
+   reachable whatever else is on the screen, which is the one thing a full-page
+   scrim must never be allowed to cover. Pressing it stops the belt, and the
+   overlay comes down with the walk's phase — see renderLive. */
 .cdeck{flex:none;height:112px;background:var(--panel);border-top:1px solid var(--line);
        display:flex;align-items:center;justify-content:center;padding:0 24px;
-       position:relative;z-index:45}
+       position:relative;z-index:56}
 .cdeck button{height:88px;border-radius:44px;display:flex;align-items:center;
               font-size:24px;white-space:nowrap}
 .cdeck button svg{width:36px;height:36px;display:block;flex:none}
@@ -568,14 +573,17 @@ button{
 .hredit{position:absolute;left:0;top:52px;width:1280px;height:748px;
         display:none;z-index:55}
 .hredit.on{display:block}
-.hredit .scrim{position:absolute;left:0;top:0;width:1280px;height:748px;
+/* The scrim stops at the command deck rather than running under it: COOL DOWN
+   and STOP stay live and legible while the target is being adjusted, which is
+   where they are in the reference and where they have to be on a treadmill. */
+.hredit .scrim{position:absolute;left:0;top:0;width:1280px;height:636px;
                background:rgba(8,8,10,.975)}
 .hredit .h{position:absolute;left:0;top:96px;width:1280px;text-align:center;
            font-size:34px;font-weight:700;letter-spacing:-.01em}
 .hredit .s{position:absolute;left:0;top:146px;width:1280px;text-align:center;
            font-size:12px;letter-spacing:.16em;color:var(--dim)}
-.hredit .hrset{position:absolute;left:340px;top:200px;width:600px}
-.hredit button.done{position:absolute;left:520px;top:596px;width:240px;height:64px;
+.hredit .hrset{position:absolute;left:340px;top:196px;width:600px}
+.hredit button.done{position:absolute;left:520px;top:504px;width:240px;height:64px;
   border-radius:32px;background:var(--orange);color:#0b0c0e;
   font-size:14px;font-weight:700;letter-spacing:.18em;
   display:flex;align-items:center;justify-content:center;
