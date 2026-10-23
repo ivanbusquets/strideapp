@@ -214,7 +214,7 @@ button{
 .pgrid button{
   width:88px;height:72px;margin:0 8px 8px 0;border-radius:8px;
   border:1px solid var(--line);background:var(--panel2);color:var(--ink);
-  font-size:28px;font-weight:600;letter-spacing:-.03em;text-align:center;
+  font-size:22.4px;font-weight:600;letter-spacing:-.02em;text-align:center;
   display:flex;align-items:center;justify-content:center;
 }
 .pgrid button:nth-child(3n){margin-right:0}
@@ -350,6 +350,7 @@ button{
    Both keys are twice the reference's size (88px tall, 24px type): they are
    the two things reached for in a hurry, mid-stride. The deck grows to hold
    them and the viewport above pays for it. */
+.cdeck.gone{display:none}
 .cdeck{flex:none;height:112px;background:var(--panel);border-top:1px solid var(--line);
        display:flex;align-items:center;justify-content:center;padding:0 24px;
        position:relative;z-index:45}
@@ -467,19 +468,20 @@ button{
 .deck .go.down{background:#e05500}
 
 /* ---- paused -------------------------------------------------------------
-   The scrim stops above the deck. STOP stays lit and reachable the whole time:
-   the belt is stopped, but nothing should ever be between a person and that
-   key. */
+   While this is up it owns the console: the scrim covers everything below the
+   header bus and the command deck is taken off the screen with it — its two
+   keys belong to the walk, and the walk is stopped. RESUME and END are here
+   instead, which is the only place they can be answered from. */
 .paused{position:absolute;left:0;top:52px;width:1280px;height:748px;
-        display:none;z-index:40}
+        display:none;z-index:50}
 .paused.on{display:block}
 .paused .scrim{position:absolute;left:0;top:0;width:1280px;height:748px;
                background:rgba(8,8,10,.975)}
-.paused .h{position:absolute;left:0;top:150px;width:1280px;text-align:center;
+.paused .h{position:absolute;left:0;top:208px;width:1280px;text-align:center;
            font-size:52px;font-weight:700;letter-spacing:-.02em}
-.paused .s{position:absolute;left:0;top:222px;width:1280px;text-align:center;
+.paused .s{position:absolute;left:0;top:280px;width:1280px;text-align:center;
            font-size:13px;color:var(--muted)}
-.paused .row{position:absolute;left:430px;top:250px;width:420px;display:flex}
+.paused .row{position:absolute;left:430px;top:330px;width:420px;display:flex}
 .paused .row .card{flex:1;height:86px;margin:0 8px;
                    display:flex;align-items:center;justify-content:center}
 .paused .row .lab{font-size:14px;letter-spacing:.16em;color:var(--muted);
@@ -696,9 +698,9 @@ button{
                         stroke="#262930" stroke-width="1.5"/>
                   <line id="lapTick" stroke="#f1f3f5" stroke-opacity="0.85" stroke-width="1.5"/>
                   <polygon id="lapFlag" fill="#f1f3f5"/>
-                  <path id="lapArc" stroke="#ff6200" stroke-width="3.5"
-                        stroke-linecap="round" pathLength="1000"
-                        stroke-dasharray="0 1000"/>
+                  <path id="lapArc" stroke="#ff6200" stroke-width="7"
+                        stroke-opacity="0.55" stroke-linecap="round"
+                        pathLength="1000" stroke-dasharray="0 1000"/>
                   <circle id="lapHalo" r="13" fill="#ff6200" fill-opacity="0.2"/>
                   <circle id="lapDot" r="5.5" fill="#ff6200"/>
                   <circle id="lapDotIn" r="2" fill="#ffffff"/>
@@ -791,7 +793,7 @@ button{
         </div>
       </div>
 
-      <div class="cdeck">
+      <div class="cdeck" id="liveDeck">
         <button class="act" id="btnLead"><span id="leadIcon"></span><span id="leadLab">COOL DOWN</span></button>
         <button class="stop" id="btnStop">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"
@@ -966,6 +968,12 @@ const LANE = (() => {
 
   return {
     r: r, cx: cx, top: top, bot: bot, perimeter: perimeter,
+    /* The infield is the r=101 oval inside this lane (24px in from its centre
+       line), so its top and bottom edges are the inner perimeter. The finish
+       line is drawn between them and no further: across the field, never
+       along the lane the walker is on. */
+    infieldTop: cy - (r - 36),
+    infieldBot: cy + (r - 36),
     /** SVG `d`, drawn in the same order and from the same numbers as at(). */
     d: segs.map((g, i) => {
       const end = pointOn(g, 1);
@@ -989,15 +997,15 @@ const SVGNS = 'http://www.w3.org/2000/svg';
 
 (() => {
   $('lapArc').setAttribute('d', LANE.d);
-  /* Start / finish: the line across the infield at distance zero, carried
-     down across the inner lane to the centre line the walker is on, with its
-     little flag where the lap begins. */
+  /* Start / finish: the line across the infield at distance zero, stopping at
+     the inner perimeter — it marks the field, it does not run along the lane
+     the walker is on — with its little flag at the foot of it. */
   const t = $('lapTick');
-  t.setAttribute('x1', LANE.cx); t.setAttribute('y1', 84);
-  t.setAttribute('x2', LANE.cx); t.setAttribute('y2', LANE.bot);
+  t.setAttribute('x1', LANE.cx); t.setAttribute('y1', LANE.infieldTop);
+  t.setAttribute('x2', LANE.cx); t.setAttribute('y2', LANE.infieldBot);
   $('lapFlag').setAttribute('points',
-    (LANE.cx - 4) + ',' + LANE.bot + ' ' + (LANE.cx + 4) + ',' + LANE.bot + ' ' +
-    LANE.cx + ',' + (LANE.bot - 8));
+    (LANE.cx - 4) + ',' + LANE.infieldBot + ' ' + (LANE.cx + 4) + ',' +
+    LANE.infieldBot + ' ' + LANE.cx + ',' + (LANE.infieldBot - 8));
 })();
 
 /* ---- the elevation profile ----------------------------------------------
@@ -1324,15 +1332,17 @@ tap($('btnLead'), () => {
   switch (shownPhase) {
     case 'warmup':   Stride.skipWarmup();   break;
     case 'cooldown': Stride.skipCooldown(); break;
-    case 'paused':   Stride.resume();       break;
     case 'active':   Stride.end();          break;   // COOL DOWN, not a hard stop
   }
 });
 tap($('btnStop'), () => {
   // Cool-down is already the way out; STOP there would just be a second one.
-  if (shownPhase !== 'active' && shownPhase !== 'warmup' && shownPhase !== 'paused') return;
+  if (shownPhase !== 'active' && shownPhase !== 'warmup') return;
   // Halt the belt first, ask second. Never the other way round.
   Stride.pause();
+  // The deck belongs to a walk in progress, so it goes with it; RESUME and
+  // END are in the overlay that replaces it.
+  $('liveDeck').classList.add('gone');
   $('paused').classList.add('on');
 });
 tap($('btnResume'), () => { $('paused').classList.remove('on'); Stride.resume(); });
@@ -1525,6 +1535,7 @@ function renderLive(s) {
   $('btnSpeedUp').style.opacity = moving ? '' : '.4';
   $('btnSpeedDown').style.opacity = moving ? '' : '.4';
 
+  $('liveDeck').classList.toggle('gone', s.phase === 'paused');
   if (s.phase !== 'paused') $('paused').classList.remove('on');
   if (s.phase === 'paused') {
     $('paused').classList.add('on');
