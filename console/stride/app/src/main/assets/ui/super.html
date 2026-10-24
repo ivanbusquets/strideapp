@@ -301,7 +301,7 @@ button{
    motion is CSS-only and every animated transform sits on an inner group: the
    translate JS writes lives on #lapGhost, the bob on .ghost-bob, and the two
    never fight over the same transform. */
-@keyframes ghost-bob { from { transform: translateY(2.6px); } to { transform: translateY(-2.6px); } }
+@keyframes ghost-bob { from { transform: translateY(3.6px); } to { transform: translateY(-3.6px); } }
 @keyframes skirt-a { 0%,49.99% { opacity:1; } 50%,100% { opacity:0; } }
 @keyframes skirt-b { 0%,49.99% { opacity:0; } 50%,100% { opacity:1; } }
 
@@ -935,9 +935,9 @@ button{
                         pathLength="1000" stroke-dasharray="0 1000"/>
                   <!-- the runner beacon: an animated ghost on the casual oval -->
                   <g id="lapGhost">
-                    <circle id="lapHalo" cy="-6" r="22" fill="#ff6200" fill-opacity="0.16"/>
+                    <circle id="lapHalo" cy="-13.2" r="30.8" fill="#ff6200" fill-opacity="0.16"/>
                     <g class="ghost-bob">
-                      <g transform="translate(-16,-24) scale(2)">
+                      <g transform="translate(-22.4,-38.4) scale(2.8)">
                         <path class="ghost-body" fill="#ff6200"
                               d="M0.7 14.2V7.9C0.7 3.8 3.9 0.6 8 0.6s7.3 3.2 7.3 7.3v6.3z"/>
                         <path class="ghost-skirt ghost-skirt-a" fill="#ff6200"
