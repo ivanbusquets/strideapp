@@ -213,7 +213,10 @@ button{
 
 /* Presets: values, not readouts — the reference lights none of them, even
    the one the belt is sitting on. Pressing one flashes it. */
-.presets{border-top:1px solid var(--line);flex:none}
+/* No hairline over the preset rows. There was a 1px border-top here, which read
+   as a stray line floating above the tiles rather than as a divider — nothing
+   above it needed separating from nothing below it. */
+.presets{flex:none}
 /* 261 = three 80px tiles plus two 7px gutters, with 7px trailing so a row never
    wraps early. The gutter is 7 rather than 8 because the column's 1px border
    sits inside its 288px: content is 255, not 256, and an 8px gutter overhung it
