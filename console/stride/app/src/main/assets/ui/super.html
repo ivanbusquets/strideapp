@@ -154,11 +154,15 @@ button{
   display:flex;background:var(--panel);
 }
 .col{display:flex;flex-direction:column}
-.col.l{width:320px;padding:20px;border-right:1px solid var(--line);
+/* 288 / 704 / 288 — the centre gains 64px and each side gives up 32. The side
+   columns are 288 rather than smaller because their preset grid needs three
+   tiles across: with 16px padding and a 1px border that leaves 255px of content,
+   which is 3 x 80px tiles plus two 7px gutters. See .pgrid. */
+.col.l{width:288px;padding:16px;border-right:1px solid var(--line);
        justify-content:space-between}
-.col.r{width:320px;padding:20px;border-left:1px solid var(--line);
+.col.r{width:288px;padding:16px;border-left:1px solid var(--line);
        justify-content:space-between}
-.col.m{width:640px;background:#0e0f12}
+.col.m{width:704px;background:#0e0f12}
 
 /* ---- a side panel: hero figure, steppers, presets ----------------------- */
 .hero-fig{padding:16px 0 0;position:relative;flex:none;
@@ -210,9 +214,13 @@ button{
 /* Presets: values, not readouts — the reference lights none of them, even
    the one the belt is sitting on. Pressing one flashes it. */
 .presets{border-top:1px solid var(--line);flex:none}
-.pgrid{display:flex;flex-wrap:wrap;width:288px}
+/* 261 = three 80px tiles plus two 7px gutters, with 7px trailing so a row never
+   wraps early. The gutter is 7 rather than 8 because the column's 1px border
+   sits inside its 288px: content is 255, not 256, and an 8px gutter overhung it
+   by exactly 1px on both rails. 88px tiles no longer fit at all. */
+.pgrid{display:flex;flex-wrap:wrap;width:261px}
 .pgrid button{
-  width:88px;height:72px;margin:0 8px 8px 0;border-radius:8px;
+  width:80px;height:72px;margin:0 7px 8px 0;border-radius:8px;
   border:1px solid var(--line);background:var(--panel2);color:#a8b0bc;
   font-size:28px;font-weight:600;letter-spacing:-.02em;text-align:center;
   display:flex;align-items:center;justify-content:center;
@@ -278,10 +286,12 @@ button{
              border-color:var(--orange);color:#0b0c0e}
 .strip2 .vline{width:1px;height:12px;background:var(--line);margin:0 14px;flex:none}
 
-/* the oval: the reference's 680x370 drawing at its rendered 0.894 scale,
-   fixed rather than `meet`-scaled so the two readouts can be placed on it */
-.ovalbox{position:absolute;left:50%;top:50%;width:608px;height:331px;
-         margin-left:-304px;margin-top:-165.5px;transform-origin:50% 50%}
+/* the oval: the reference's 680x370 drawing, now rendered at 0.965 (656x357)
+   instead of 0.894. It grew into the 64px the centre column gained — the stage
+   is 674 wide, so this leaves 9px either side and 30px above and below. Fixed
+   size rather than `meet`-scaled, so the two readouts can be placed on it. */
+.ovalbox{position:absolute;left:50%;top:50%;width:656px;height:357px;
+         margin-left:-328px;margin-top:-178.5px;transform-origin:50% 50%}
 .ovalbox svg{position:absolute;left:0;top:0;display:block}
 .ov{position:absolute;top:0;bottom:0;width:220px;margin-left:-110px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -290,10 +300,15 @@ button{
    (from 44) after a spell at 62 — 62 fitted, but only just, and the clock is
    the one thing on this screen that gets wider as the walk goes on.
 
-   The box stays 220px: the two anchors are 232px apart, so anything wider makes
-   the boxes overlap each other even though the text inside clears by ~125px. */
+   The box stays 220px: at the 656px render the two anchors sit 239px apart, so
+   a 220px box leaves 19px between them. That gap is the whole margin — a clock
+   much wider than 00:00 is what would close it. */
+/* The 0.1em padding cancels half the trailing letter-space: tracking is added
+   after the last character too, so the label's painted ink sat ~1.8px left of
+   its box centre even though the box itself was dead centred. The numbers need
+   no such correction — negative tracking moves their ink only ~0.7px. */
 .ov .k{font-size:18px;letter-spacing:.2em;color:var(--muted);font-weight:600;
-       line-height:24px;margin-bottom:5px}
+       line-height:24px;margin-bottom:5px;padding-left:.1em}
 .ov .n,.ov .t{font-size:56px;font-weight:700;line-height:1;letter-spacing:-.025em}
 .ov .t{color:var(--orange)}
 
@@ -918,7 +933,7 @@ button{
             <!-- the oval, for a casual walk -->
             <div class="hero" id="heroLaps">
               <div class="ovalbox">
-                <svg viewBox="0 0 680 370" width="608" height="331" fill="none">
+                <svg viewBox="0 0 680 370" width="656" height="357" fill="none">
                   <!-- the outer lanes are drawing, not data: nobody walks them -->
                   <rect x="20" y="12" width="640" height="346" rx="173" ry="173"
                         stroke="#262930" stroke-width="1.5"/>
@@ -952,11 +967,11 @@ button{
                     </g>
                   </g>
                 </svg>
-                <div class="ov" style="left:30.88%">
+                <div class="ov" style="left:31.76%">
                   <span class="k">LAP</span>
                   <span class="n" id="lapNo">1</span>
                 </div>
-                <div class="ov" style="left:69.12%">
+                <div class="ov" style="left:68.24%">
                   <span class="k">LAP TIME</span>
                   <span class="t" id="lapTime">00:00</span>
                 </div>
@@ -1844,6 +1859,19 @@ function renderLive(s) {
   const hrMode = s.hrTarget.bpm > 0;
   const units = paceUnits();
 
+  /* A warm-up that is folded in zeroes the console's totals — Session's
+     resetAfterWarmup, on by default — so the first active frame can arrive with
+     LESS distance and elapsed than the lap was baselined on a frame earlier.
+     Re-arm from scratch when either goes backwards. Without this the clamp in
+     renderLaps holds the fraction at 0 until the odometer climbs back past the
+     old warm-up distance: the oval, the arc and the beacon all sit still at the
+     finish line for those seconds, which reads as the runner refusing to start.
+     The tolerances match lapTick's own "a new walk" test. */
+  if (lapArmed && (s.session.distance < lapBaseM - 0.5 ||
+                   s.session.elapsed + 1 < lap.at)) {
+    lapReset();
+  }
+
   /* Arm the lap clock on the first active frame. Done here rather than in
      renderLaps because the oval is not drawn during a warm-up — renderLaps is
      never called then, so a warm-up would leave the baseline untouched and the
@@ -1993,13 +2021,13 @@ function renderLaps(s) {
   fitOval();
 }
 
-/* The drawing is 331px tall and the stage is not always: with the coach band
+/* The drawing is 357px tall and the stage is not always: with the coach band
    docked it is about 300. Shrink the whole oval — lanes, readouts and dot
    together, so nothing moves relative to anything else — rather than crop it. */
 let ovalScale = 1;
 function fitOval() {
   const h = $('stage').clientHeight;
-  const k = h > 0 ? Math.min(1, (h - 6) / 331) : 1;
+  const k = h > 0 ? Math.min(1, (h - 6) / 357) : 1;
   if (Math.abs(k - ovalScale) < 0.005) return;
   ovalScale = k;
   document.querySelector('.ovalbox').style.transform = k < 1 ? 'scale(' + k.toFixed(3) + ')' : '';
