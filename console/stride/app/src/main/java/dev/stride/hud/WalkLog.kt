@@ -51,16 +51,20 @@ import java.util.UUID
  * files rather than losing walks, and says so in the log rather than failing
  * quietly.
  *
- * **The summary is written when the walk ends, and sent when the summary
- * screen is left.** Those are two different moments and the gap between them
- * is the point: the person is asked how hard the walk felt on that screen, and
- * a file written at the moment of leaving would carry the rating only if they
- * had already answered — and would not exist at all if the console were
- * switched off at the wall while the summary was up. So `endWalk` writes the
- * summary there and then, unrated if nobody has tapped yet, and `finishSummary`
- * rewrites it with whatever was tapped and sends it once, on the way out (see
- * [rate]). A console that is left sitting on the summary sends nothing until
- * it sleeps or the next walk begins, which is the cost of the thing it buys.
+ * **The summary is written when the summary screen is left, and sent at that
+ * same moment.** The person is asked how hard the walk felt on that screen, so
+ * the file has to wait for them: written at the end of the walk it would be
+ * unrated, and rewriting it later would be two files for one walk and two
+ * chances to send. `endWalk` therefore only *holds* the walk; [finishSummary]
+ * writes it once, with whatever was tapped (see [rate]), and sends the pair
+ * immediately.
+ *
+ * **Every way off the screen closes it.** DONE, the next walk beginning and
+ * the panel sleeping all call [finishSummary], so a rating entered and never
+ * DONE'd is still written. The one case that loses the summary is the console
+ * switched off at the wall while the summary is on screen: that leaves a CSV
+ * with no summary, exactly like an interrupted walk, and a CSV with no summary
+ * is not a pair and is never sent.
  *
  * **Which walks get files at all** is [History]'s rule and not this class's:
  * a guest's walk and a walk under 300 m or three minutes are not recorded
@@ -85,26 +89,22 @@ class WalkLog(private val context: Context, private val settings: Settings) {
      * The walk being written, or null when there is none.
      *
      * Non-null means a CSV is open on the console for that walk. The summary
-     * is written when the walk ends, and the pair is only then a candidate for
-     * sending — so a walk cut short by a power cut leaves a CSV with no
-     * summary, which is not a pair and is never sent.
+     * is written only when the summary screen is left, so a walk cut short by
+     * a power cut leaves a CSV with no summary, which is not a pair and is
+     * never sent.
      */
     private var currentId: String? = null
     private var writer: BufferedWriter? = null
     private var lastRowAt = 0L
 
     /**
-     * The walk whose summary is written and waiting for the summary screen to
-     * be left: its id, the walk itself, and the rating tapped on that screen.
+     * The walk whose summary has not been written yet: it waits for the
+     * summary screen to be left, and carries the rating tapped there.
      *
-     * Held in memory rather than on disk because it lives for as long as the
-     * screen does. The rating is re-applied when the file is rewritten, so the
-     * file and the eventual send carry the last number tapped rather than the
-     * first.
+     * [PendingSummary] owns the single-shot rule, so the first exit writes
+     * one file and every later exit finds nothing left to do.
      */
-    private var pendingId: String? = null
-    private var pendingWalk: History.Walk? = null
-    private var pendingRpe: Int? = null
+    private val pending = PendingSummary(dir)
 
     /**
      * True once this walk has been turned away for having no profile.
@@ -140,13 +140,13 @@ class WalkLog(private val context: Context, private val settings: Settings) {
      *        keeps — see [History.recordable].
      */
     fun beginWalk(who: String) {
-        if (!settings.walkLogOn()) return
         // **A walk beginning is also a way off the last walk's summary.** The
-        // previous walk is over by definition, so a summary still waiting to be
-        // sent is let go here rather than held behind this one — see
-        // [finishSummary]. It usually has nothing to do: leaving the summary
-        // for the welcome screen is the ordinary exit, and it gets there first.
+        // previous walk is over by definition, so its summary is written and
+        // sent here rather than held behind this one — see [finishSummary].
+        // It comes before the enabled check so a summary held when the log was
+        // switched off still gets its file.
         finishSummary()
+        if (!settings.walkLogOn()) return
         synchronized(lock) {
             turnedAway = false
             if (!hasProfile(who)) {
@@ -241,23 +241,20 @@ class WalkLog(private val context: Context, private val settings: Settings) {
     // --- at the end of the walk ----------------------------------------------
 
     /**
-     * The walk has ended: write the summary, or not. **Do not send yet.**
+     * The walk has ended: close the CSV and hold the walk until the summary
+     * screen is left. **Do not write the summary or send yet.**
      *
      * The summary carries exactly what `history.json` carries for the same
      * walk — the same fields, produced by the same code — so the two cannot
-     * disagree. The CSV and the summary are named with the same walk id, which
-     * is how a receiver pairs them up.
-     *
-     * The file goes down *now* rather than when the summary screen is left,
-     * because a console switched off at the wall with the summary on screen
-     * must still leave a summary behind. It is written unrated — nobody has
-     * been asked yet — and rewritten by [finishSummary] with whatever was
-     * tapped on the way out. The send waits for that same moment: see the
-     * class comment for why the two were pulled apart.
+     * disagree. It is written by [finishSummary], with whatever rating was
+     * tapped on the summary screen, rather than here where nobody has been
+     * asked yet.
      *
      * A walk that is not recorded locally produces no files at all, and the
      * CSV that was being written for it is thrown away: a stroll that stopped
-     * after two minutes is not a walk anybody asked for.
+     * after two minutes is not a walk anybody asked for. A walk whose CSV
+     * never reached the disk is not held either — [PendingSummary] will not
+     * write a summary with no CSV to pair it with.
      */
     fun endWalk(walk: History.Walk, hasProfile: Boolean) {
         val id: String?
@@ -269,15 +266,12 @@ class WalkLog(private val context: Context, private val settings: Settings) {
         }
         if (id != null) {
             if (History.recordable(walk, hasProfile)) {
-                val unrated = walk.copy(rpe = null)
-                if (writeSummary(id, unrated)) {
-                    synchronized(lock) {
-                        pendingId = id
-                        pendingWalk = unrated
-                        pendingRpe = null
-                    }
-                    Log.i(TAG, "walk log: wrote the summary for $id — " +
-                            "the send waits for the summary screen to be left")
+                if (pending.hold(id, walk.copy(rpe = null))) {
+                    Log.i(TAG, "walk log: holding the summary for $id — " +
+                            "it is written when the summary screen is left")
+                } else {
+                    Log.w(TAG, "walk log: could not hold the summary for $id — " +
+                            "no CSV to pair it with")
                 }
             } else {
                 File(dir, "$id${WalkFiles.CSV_SUFFIX}").delete()
@@ -289,10 +283,9 @@ class WalkLog(private val context: Context, private val settings: Settings) {
     /**
      * Remember the rating tapped on the summary screen.
      *
-     * Nothing is written here: the file on the console is rewritten once, by
-     * [finishSummary], with the last number tapped rather than the first. That
-     * is also what stops a person changing their mind from costing a second
-     * request.
+     * Nothing is written here: [finishSummary] writes the one summary file
+     * with the last number tapped rather than the first. That is also what
+     * stops a person changing their mind from costing a second request.
      *
      * Once [finishSummary] has run — the console slept, or the summary was left
      * — there is nothing pending and this does nothing, so a rating tapped by
@@ -303,60 +296,39 @@ class WalkLog(private val context: Context, private val settings: Settings) {
      * tapped.
      */
     fun rate(rpe: Int?) {
-        synchronized(lock) {
-            if (pendingId == null) return
-            pendingRpe = rpe?.takeIf { it in 1..10 }
-        }
+        pending.rate(rpe)
     }
 
     /**
      * The summary screen has been left — or the console has gone to sleep, or
-     * the next walk has begun. Rewrite the summary with the rating and send.
+     * the next walk has begun. Write the summary once, with the rating, and
+     * send the pair.
      *
      * Called from every one of those exits ([MainActivity.home],
      * [MainActivity.Bridge.dim] and [beginWalk]), because each of them can be
      * the last thing that happens before the console is switched off, and the
      * one thing this must never do is hold a finished walk for a screen nobody
-     * is standing in front of. The first call wins and the rest find nothing
-     * pending, so the pair can only be sent once from here.
+     * is standing in front of. [PendingSummary] hands the walk to exactly one
+     * caller, so a race between DONE and sleep writes one file and starts one
+     * send; every later call finds nothing to do.
      */
     fun finishSummary() {
-        val id: String?
-        val walk: History.Walk?
-        val rpe: Int?
-        synchronized(lock) {
-            id = pendingId
-            walk = pendingWalk
-            rpe = pendingRpe
-            pendingId = null
-            pendingWalk = null
-            pendingRpe = null
+        when (val closed = pending.close()) {
+            is PendingSummary.Close.Written -> {
+                Log.i(TAG, "walk log: wrote the summary for ${closed.id}" +
+                        if (closed.rpe != null) " at ${closed.rpe}/10" else " unrated")
+                // On its own thread: the person is on their way off the
+                // summary, and a network timeout is somebody else's problem to
+                // wait for. Same reasoning as the MQTT retry thread.
+                Thread({ flush() }, "walk-log-send").start()
+            }
+            PendingSummary.Close.Failed ->
+                // No summary means no pair, and an unpaired CSV is never sent.
+                // The CSV stays on the console; nothing else can be done with
+                // it.
+                Log.w(TAG, "walk log: cannot write the summary — that walk is not sent")
+            PendingSummary.Close.Nothing -> Unit
         }
-        if (id == null || walk == null) return
-        val rated = walk.copy(rpe = rpe)
-        if (!writeSummary(id, rated)) {
-            // No summary means no pair, and an unpaired CSV is never sent.
-            // The CSV stays on the console; nothing else can be done with it.
-            Log.w(TAG, "walk log: no summary for $id — that walk is not sent")
-            return
-        }
-        Log.i(TAG, "walk log: summary for $id closed" +
-                if (rpe != null) " at $rpe/10" else " unrated")
-        // On its own thread: the person is on their way off the summary, and a
-        // network timeout is somebody else's problem to wait for. Same
-        // reasoning as the MQTT retry thread.
-        Thread({ flush() }, "walk-log-send").start()
-    }
-
-    /** Write one walk's summary file. Returns false when it could not be. */
-    private fun writeSummary(id: String, walk: History.Walk): Boolean = try {
-        dir.mkdirs()
-        File(dir, "$id${WalkFiles.SUMMARY_SUFFIX}")
-            .writeText(walk.json().toString(2))
-        true
-    } catch (e: Exception) {
-        Log.w(TAG, "walk log: cannot write the summary (${e.message})")
-        false
     }
 
     private fun closeWriter() {

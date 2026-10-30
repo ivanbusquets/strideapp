@@ -1243,11 +1243,11 @@ class MainActivity : Activity() {
          * this is the cheap second attempt at the moment the screen changes.
          */
         @JavascriptInterface fun home() {
-            // **Leaving the summary is what sends the walk.** The file has been
-            // on the console since the belt stopped; this is the moment it is
-            // closed with whatever rating was tapped and sent once. Do it before
-            // the session moves on, so the walk that is being let go is still
-            // the one on screen.
+            // **Leaving the summary is what writes and sends the walk.** The
+            // walk has been held since the belt stopped; this is the moment its
+            // summary is written with whatever rating was tapped and the pair
+            // goes up once. Do it before the session moves on, so the walk that
+            // is being let go is still the one on screen.
             walkLog.finishSummary()
             session = Session.WELCOME
             workout = "none"
@@ -1486,7 +1486,7 @@ class MainActivity : Activity() {
             val rating = rpe.takeIf { it in 1..10 }
             summaryRpe = rating
             summaryWalk = history.rate(walk, rating)
-            // Held, not written: the summary file is rewritten once, when the
+            // Held, not written: the summary file is written once, when the
             // screen is left — see WalkLog.rate.
             walkLog.rate(rating)
             Log.i(TAG, "summary: effort " +
@@ -1644,7 +1644,7 @@ class MainActivity : Activity() {
             // **The console going to sleep is the other way off the summary.**
             // Every UI's idle timer calls this as it puts the panel to bed, and
             // somebody walking away from a summary is exactly the case that must
-            // not hold the walk until morning: this closes the summary file with
+            // not hold the walk until morning: this writes the summary with
             // whatever was tapped and sends the pair. A sleep from any other
             // screen finds nothing pending and does nothing at all.
             if (on) walkLog.finishSummary()
@@ -2191,11 +2191,13 @@ class MainActivity : Activity() {
         // History.Walk.rpe.
         summaryWalk = walk
         summaryRpe = null
-        // The same walk, written out as a file. The summary file is the same
-        // fields as the entry above, so the two cannot disagree, and it goes
-        // down **now** — a console switched off at the wall with the summary
-        // on screen must still leave one behind. The send waits for the screen
-        // to be left; see WalkLog.endWalk and finishSummary.
+        // The same walk, held rather than written. Its summary is the same
+        // fields as the entry above, so the two cannot disagree, but it is
+        // written only when the summary screen is left — so the rating tapped
+        // on that screen is in the file the first and only time it is sent, and
+        // a console switched off at the wall leaves a CSV with no summary,
+        // exactly like an interrupted walk. See WalkLog.endWalk and
+        // finishSummary.
         walkLog.endWalk(walk, hasProfile())
         if (earned.isNotEmpty()) Log.i(TAG, "achievements: ${earned.joinToString("; ")}")
         if (stopping) return          // the wind-down parks the machine after it

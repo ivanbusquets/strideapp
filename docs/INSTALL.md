@@ -345,11 +345,13 @@ Home Assistant people under *From Home Assistant*.
 ### 2.4 Optional: sending the walk files somewhere
 
 The console can write out every walk as two files — a CSV of every second and
-a summary. The summary is written the moment the walk ends, so a console
-switched off at the wall still leaves one behind; both files are POSTed to a
-listener on your network once the summary screen is left (or the console goes
-to sleep), which is when the optional "how hard was that?" rating has been
-tapped. Off by default; there is a switch for it under **Settings → Walk log**.
+a summary. The CSV is written as the walk goes. The summary is written when the
+summary screen is left, and both files are POSTed to a listener on your network
+at that moment — DONE, the next walk starting, or the console going to sleep —
+which is when the optional "how hard was that?" rating has been tapped, so the
+rating is in the first send. A console switched off at the wall while the
+summary is up leaves a CSV with no summary, and that pair is never sent. Off by
+default; there is a switch for it under **Settings → Walk log**.
 
 The receiving end is
 [`homeassistant/stride_walk_listener.py`](../homeassistant/stride_walk_listener.py).
