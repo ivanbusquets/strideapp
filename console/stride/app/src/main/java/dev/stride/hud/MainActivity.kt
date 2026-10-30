@@ -673,6 +673,17 @@ class MainActivity : Activity() {
     @Volatile private var summaryWalk: History.Walk? = null
     @Volatile private var summaryRpe: Int? = null
 
+    /**
+     * Whether the walk on the summary screen is one the console keeps.
+     *
+     * A guest's walk and a walk under 300 m or three minutes are summarised
+     * and then forgotten, so the rating asked for on that screen has nowhere
+     * to go. The selector is still drawn and still answers a tap; this flag
+     * is what stops the number reaching `history.json`, a summary file, a
+     * send or the retained MQTT state — see [SummaryRating].
+     */
+    @Volatile private var summaryRecorded = false
+
     /** Last speed the *board* reported, as opposed to what we asked for. */
     @Volatile private var lastActualKph = 0.0
     /** The grade the board last reported, for enforceLevel. */
@@ -1256,6 +1267,7 @@ class MainActivity : Activity() {
             summarySpoken = false
             summaryWalk = null
             summaryRpe = null
+            summaryRecorded = false
             clearPlan()
             resetSession()
             // Leaving the summary ends any easing still in flight. The console
@@ -1483,7 +1495,13 @@ class MainActivity : Activity() {
         @JavascriptInterface fun setRpe(rpe: Int) {
             if (session != Session.SUMMARY) return
             val walk = summaryWalk ?: return
-            val rating = rpe.takeIf { it in 1..10 }
+            // A walk the console does not keep may still be rated on screen —
+            // the selector is drawn and taps without complaint — but the number
+            // has nowhere to go. Dropping it here is what stops it reaching
+            // history.json, a summary file, a send or the retained MQTT state.
+            // See SummaryRating.
+            if (!summaryRecorded) return
+            val rating = SummaryRating.clean(rpe)
             summaryRpe = rating
             summaryWalk = history.rate(walk, rating)
             // Held, not written: the summary file is written once, when the
@@ -2185,7 +2203,12 @@ class MainActivity : Activity() {
             maxPulse = maxPulse,
             plan = planName,
         )
-        earned = history.record(walk, hasProfile())
+        // Asked once: the history record and the walk-log files must agree
+        // about which walks exist, and the summary screen's rating is only
+        // kept for the same walks — see SummaryRating.
+        val profiled = hasProfile()
+        summaryRecorded = SummaryRating.allowed(walk, profiled)
+        earned = history.record(walk, profiled)
         // What the summary screen is about, and a rating to start from: nobody
         // has been asked yet on a fresh summary, so it is absent — see
         // History.Walk.rpe.
@@ -2198,7 +2221,7 @@ class MainActivity : Activity() {
         // a console switched off at the wall leaves a CSV with no summary,
         // exactly like an interrupted walk. See WalkLog.endWalk and
         // finishSummary.
-        walkLog.endWalk(walk, hasProfile())
+        walkLog.endWalk(walk, profiled)
         if (earned.isNotEmpty()) Log.i(TAG, "achievements: ${earned.joinToString("; ")}")
         if (stopping) return          // the wind-down parks the machine after it
         rampReason = ""
@@ -3233,8 +3256,10 @@ class MainActivity : Activity() {
             planPeakIncline = planSteps.maxOfOrNull { it.incline } ?: 0.0,
             summaryLine = summaryLine,
             // 0 for "not given" — the screen has to draw nothing selected, and
-            // 0 is not in the 1-10 scale. Only the summary keeps one.
-            rpe = if (session == Session.SUMMARY) summaryRpe ?: 0 else 0,
+            // 0 is not in the 1-10 scale. Only the summary keeps one, and only
+            // for a walk the console keeps: an unsaved walk's rating is dropped,
+            // so the retained MQTT frame must not carry it either.
+            rpe = if (session == Session.SUMMARY && summaryRecorded) summaryRpe ?: 0 else 0,
             planElapsed = planElapsed,
             planLap = planLap,
             planLoops = planLoops,
@@ -3517,8 +3542,9 @@ class MainActivity : Activity() {
             summaryLine = summaryLine,
             // A rating tapped a moment ago must survive a repaint as well as a
             // poll — the base frame is the last *poll*'s, and that may be a
-            // fifth of a second older than the tap.
-            rpe = if (session == Session.SUMMARY) summaryRpe ?: 0 else 0,
+            // fifth of a second older than the tap. Unsaved walks keep none:
+            // see SummaryRating.
+            rpe = if (session == Session.SUMMARY && summaryRecorded) summaryRpe ?: 0 else 0,
             targetSpeed = targetKph,
             targetIncline = targetGrade,
             elapsed = elapsedSec(),

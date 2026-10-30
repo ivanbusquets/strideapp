@@ -4,6 +4,7 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -169,6 +170,130 @@ class WalkSummaryTest {
 
         val json = JSONObject(summaries().single().readText())
         assertFalse("an out-of-range rating reached the file: $json", json.has("rpe"))
+    }
+
+    // --- walks the console does not keep ------------------------------------
+
+    @Test
+    fun `a guest walk or a short walk may not carry a rating`() {
+        // The selector is still shown for these walks; the console just has
+        // nowhere to put the number. `allowed` is what every caller asks.
+        assertFalse("a guest's walk is not kept",
+            SummaryRating.allowed(walk().copy(who = "Guest"), hasProfile = false))
+        assertFalse("under 300 m is not kept",
+            SummaryRating.allowed(walk().copy(distance = 299.0), hasProfile = true))
+        assertFalse("under three minutes is not kept",
+            SummaryRating.allowed(walk().copy(elapsed = 179.0), hasProfile = true))
+    }
+
+    @Test
+    fun `the boundary is unchanged - exactly 300 m and exactly three minutes are kept`() {
+        // History.recordable uses >=, and this must match it rather than
+        // quietly move the line: 300 m / 180 s is the first kept walk.
+        val edge = walk().copy(distance = 300.0, elapsed = 180.0)
+        assertTrue(SummaryRating.allowed(edge, hasProfile = true))
+        assertFalse(SummaryRating.allowed(edge.copy(distance = 299.9), hasProfile = true))
+        assertFalse(SummaryRating.allowed(edge.copy(elapsed = 179.9), hasProfile = true))
+    }
+
+    @Test
+    fun `a rating is only one to ten`() {
+        assertNull(SummaryRating.clean(null))
+        assertNull(SummaryRating.clean(0))
+        assertNull(SummaryRating.clean(11))
+        assertEquals(1, SummaryRating.clean(1))
+        assertEquals(10, SummaryRating.clean(10))
+    }
+
+    @Test
+    fun `a rating tapped with no walk held is discarded`() {
+        // The guest and short paths reach the summary screen but endWalk never
+        // held their walk, so this is exactly the object they see. Tapping is
+        // harmless and stores nothing.
+        val pending = PendingSummary(dir)
+        pending.rate(9)
+
+        assertEquals(PendingSummary.Close.Nothing, pending.close())
+        assertEquals(0, summaries().size)
+        assertTrue("a walk with no summary must not be a pair",
+            WalkFiles.pairsIn(dir).isEmpty())
+    }
+
+    @Test
+    fun `a guest walk with a rating leaves no summary on done sleep or a new walk`() {
+        val id = "walk-guest"
+        csvFor(id)
+        val guest = walk().copy(who = "Guest")
+
+        // WalkLog.endWalk takes this branch for anything History.recordable
+        // rejects: the walk is not held and its CSV is thrown away, so both
+        // the screen exits and the send have nothing to find.
+        assertFalse(History.recordable(guest, hasProfile = false))
+        val pending = PendingSummary(dir)
+        if (History.recordable(guest, hasProfile = false)) {
+            pending.hold(id, guest.copy(rpe = null))
+        } else {
+            File(dir, "$id${WalkFiles.CSV_SUFFIX}").delete()
+        }
+        pending.rate(9)
+
+        // DONE, then the panel sleeping, then a new walk beginning.
+        assertEquals(PendingSummary.Close.Nothing, pending.close())
+        assertEquals(PendingSummary.Close.Nothing, pending.close())
+        assertEquals(PendingSummary.Close.Nothing, pending.close())
+
+        assertEquals(0, summaries().size)
+        assertTrue(WalkFiles.pairsIn(dir).isEmpty())
+        assertFalse("the guest's CSV must be gone",
+            File(dir, "$id${WalkFiles.CSV_SUFFIX}").exists())
+    }
+
+    @Test
+    fun `a short walk with a rating leaves no summary on any exit`() {
+        val shortWalks = mapOf(
+            "walk-short-distance" to walk().copy(distance = 299.0),
+            "walk-short-time" to walk().copy(elapsed = 179.0),
+        )
+        for ((id, short) in shortWalks) {
+            csvFor(id)
+            assertFalse("$id is not recordable", History.recordable(short, hasProfile = true))
+
+            val pending = PendingSummary(dir)
+            if (History.recordable(short, hasProfile = true)) {
+                pending.hold(id, short.copy(rpe = null))
+            } else {
+                File(dir, "$id${WalkFiles.CSV_SUFFIX}").delete()
+            }
+            pending.rate(8)
+
+            assertEquals(PendingSummary.Close.Nothing, pending.close())
+            assertEquals(PendingSummary.Close.Nothing, pending.close())
+            assertEquals(0, summaries().size)
+            assertTrue(WalkFiles.pairsIn(dir).isEmpty())
+            assertFalse(File(dir, "$id${WalkFiles.CSV_SUFFIX}").exists())
+        }
+    }
+
+    @Test
+    fun `a borderline walk is kept and its rating is written once`() {
+        // The other side of the same boundary: 300 m and 180 s exactly is a
+        // walk the console keeps, so its rating is written like any other.
+        val id = "walk-edge"
+        csvFor(id)
+        val edge = walk().copy(distance = 300.0, elapsed = 180.0)
+        assertTrue(History.recordable(edge, hasProfile = true))
+
+        val pending = PendingSummary(dir)
+        assertTrue(pending.hold(id, edge.copy(rpe = null)))
+        pending.rate(10)
+        val closed = pending.close()
+
+        assertTrue(closed is PendingSummary.Close.Written)
+        assertEquals(10, (closed as PendingSummary.Close.Written).rpe)
+        assertEquals(1, summaries().size)
+        assertEquals(10, ratingIn(summaries().single()))
+        assertEquals(PendingSummary.Close.Nothing, pending.close())
+        assertEquals(1, summaries().size)
     }
 
     // --- helpers -------------------------------------------------------------
