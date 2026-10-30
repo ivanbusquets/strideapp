@@ -86,10 +86,22 @@ class History(context: Context) {
             .put("plan", plan)
             // Left out rather than written as 0: an unrated walk is absent,
             // and a reader that sees nothing knows not to treat it as a 1.
-            .apply { rpe?.let { put("rpe", it) } }
+            // Out-of-range values are dropped here too, so a caller that
+            // passed 0 or 11 cannot put a meaningless number on disk.
+            .apply { clean(rpe)?.let { put("rpe", it) } }
 
         companion object {
             private fun round1(v: Double) = Math.round(v * 10.0) / 10.0
+
+            /**
+             * A rating that means something, or null.
+             *
+             * The one place the 1-10 rule lives: [json] writes through it,
+             * [from] reads through it, and [rate] and [record] store through
+             * it, so nothing out of range can reach the file or, having been
+             * read back, the list. **Null, not 0** — see [rpe].
+             */
+            fun clean(rpe: Int?): Int? = rpe?.takeIf { it in 1..10 }
 
             fun from(o: JSONObject) = Walk(
                 who = o.optString("who"),
@@ -106,9 +118,9 @@ class History(context: Context) {
                 plan = o.optString("plan"),
                 // Absent, null, or out of range is "not rated" — never 0,
                 // and never something that would read as a genuine 1.
-                rpe = if (o.has("rpe") && !o.isNull("rpe")) {
-                    o.optInt("rpe").takeIf { it in 1..10 }
-                } else null,
+                rpe = clean(
+                    if (o.has("rpe") && !o.isNull("rpe")) o.optInt("rpe") else null
+                ),
             )
         }
     }
@@ -143,19 +155,22 @@ class History(context: Context) {
      */
     @Synchronized
     fun record(walk: Walk, hasProfile: Boolean): List<String> {
-        if (!recordable(walk, hasProfile)) {
+        // Kept as it will be stored: an out-of-range rating is "not rated",
+        // and the list in memory should agree with the file about that.
+        val stored = walk.copy(rpe = Walk.clean(walk.rpe))
+        if (!recordable(stored, hasProfile)) {
             Log.i(TAG, if (!hasProfile)
                 "guest walk — summarised but not recorded"
             else
-                "walk too short to record (${"%.0f".format(walk.distance)} m)")
+                "walk too short to record (${"%.0f".format(stored.distance)} m)")
             return emptyList()
         }
-        val previous = walks.filter { it.who == walk.who }
-        val earned = achievements(walk, previous)
+        val previous = walks.filter { it.who == stored.who }
+        val earned = achievements(stored, previous)
 
-        walks = (listOf(walk) + walks).take(KEEP)
+        walks = (listOf(stored) + walks).take(KEEP)
         save()
-        Log.i(TAG, "recorded walk for ${walk.who} " +
+        Log.i(TAG, "recorded walk for ${stored.who} " +
                 "(${previous.size + 1} total), ${earned.size} achievement(s)")
         return earned
     }
@@ -272,7 +287,7 @@ class History(context: Context) {
      */
     @Synchronized
     fun rate(walk: Walk, rpe: Int?): Walk {
-        val rating = rpe?.takeIf { it in 1..10 }
+        val rating = Walk.clean(rpe)
         val updated = walk.copy(rpe = rating)
         val i = walks.indexOfFirst { it == walk }
         if (i < 0) return updated
